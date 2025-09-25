@@ -1,0 +1,28 @@
+[project]
+name = "certmanagement"
+version = "0.1.0"
+description = "多云DNS证书管理工具 - 支持华为云、腾讯云、阿里云等主流云服务商"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "python-dotenv>=1.0.0",
+    "fastapi>=0.104.0",
+    "uvicorn>=0.24.0",
+    "tortoise-orm>=0.20.0",
+    "jinja2>=3.1.0",
+    "python-multipart>=0.0.6",
+    "apscheduler>=3.10.0",
+]
+
+[project.scripts]
+certmanagement = "main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["core", "providers"]
