@@ -348,10 +348,7 @@ class CertificateService:
                         logger.info(f"certbot stderr (with encoding errors): {stderr_text}")
                 
                 if process.returncode == 0:
-                    # 证书申请成功，复制证书文件到data目录
-                    await self._copy_certificate_files(config_dir, full_domain)
-                    
-                    # 读取证书信息
+                    # 证书申请成功，直接读取证书信息
                     cert_info = await self._read_certificate_info(config_dir, full_domain)
                     
                     # DNS验证记录由cleanup hook自动清理
@@ -623,51 +620,85 @@ class CertificateService:
         except Exception as e:
             logger.error(f"清理certbot进程时出错: {str(e)}")
 
-    async def _copy_certificate_files(self, temp_dir: str, domain: str):
-        """复制证书文件到data目录"""
-        try:
-            import shutil
-            
-            # 源目录和目标目录
-            source_dir = os.path.join(temp_dir, "live", domain)
-            target_dir = os.path.join(self.config.certificate_storage_path, "live", domain)
-            
-            # 创建目标目录
-            os.makedirs(target_dir, exist_ok=True)
-            
-            # 复制证书文件
-            files_to_copy = ["fullchain.pem", "privkey.pem", "cert.pem", "chain.pem"]
-            
-            for filename in files_to_copy:
-                source_file = os.path.join(source_dir, filename)
-                target_file = os.path.join(target_dir, filename)
-                
-                if os.path.exists(source_file):
-                    shutil.copy2(source_file, target_file)
-                    logger.info(f"证书文件已复制: {filename} -> {target_file}")
-                else:
-                    logger.warning(f"证书文件不存在: {source_file}")
-            
-            logger.info(f"证书文件复制完成: {domain}")
-            
-        except Exception as e:
-            logger.error(f"复制证书文件失败: {str(e)}")
-            raise e
     
     async def _read_certificate_info(self, cert_dir: str, domain: str) -> Dict:
         """
         读取证书信息
         
         Args:
-            cert_dir: 证书目录
+            cert_dir: 证书配置目录
             domain: 域名
             
         Returns:
             Dict: 证书信息
         """
         try:
-            # 这里应该读取实际的证书文件
-            # 由于certbot的证书文件结构，这里简化处理
+            # 构建证书文件路径
+            cert_file = os.path.join(cert_dir, "live", domain, "fullchain.pem")
+            
+            if os.path.exists(cert_file):
+                # 尝试读取实际的证书文件信息
+                try:
+                    import subprocess
+                    import platform
+                    
+                    # 根据操作系统选择合适的openssl命令
+                    if platform.system() == "Windows":
+                        # Windows上尝试常见的openssl路径
+                        openssl_paths = [
+                            'openssl',
+                            r'C:\Program Files\OpenSSL-Win64\bin\openssl.exe',
+                            r'C:\Program Files (x86)\OpenSSL-Win32\bin\openssl.exe',
+                            r'C:\OpenSSL-Win64\bin\openssl.exe',
+                            r'C:\OpenSSL-Win32\bin\openssl.exe'
+                        ]
+                        
+                        openssl_cmd = None
+                        for path in openssl_paths:
+                            try:
+                                result = subprocess.run([path, 'version'], capture_output=True, text=True, timeout=5)
+                                if result.returncode == 0:
+                                    openssl_cmd = path
+                                    break
+                            except:
+                                continue
+                        
+                        if not openssl_cmd:
+                            logger.info("Windows系统未找到openssl，使用默认证书信息")
+                            raise FileNotFoundError("openssl not found")
+                        
+                        result = subprocess.run([
+                            openssl_cmd, 'x509', '-in', cert_file, '-noout', '-dates', '-issuer', '-subject', '-serial'
+                        ], capture_output=True, text=True, timeout=10)
+                    else:
+                        # Linux/Mac系统
+                        result = subprocess.run([
+                            'openssl', 'x509', '-in', cert_file, '-noout', '-dates', '-issuer', '-subject', '-serial'
+                        ], capture_output=True, text=True, timeout=10)
+                    
+                    if result.returncode == 0:
+                        # 解析openssl输出
+                        output = result.stdout
+                        info = {}
+                        
+                        for line in output.split('\n'):
+                            if 'notAfter=' in line:
+                                info['not_after'] = datetime.strptime(line.split('=')[1], '%b %d %H:%M:%S %Y %Z')
+                            elif 'notBefore=' in line:
+                                info['not_before'] = datetime.strptime(line.split('=')[1], '%b %d %H:%M:%S %Y %Z')
+                            elif 'issuer=' in line:
+                                info['issuer'] = line.split('=', 1)[1]
+                            elif 'subject=' in line:
+                                info['subject'] = line.split('=', 1)[1]
+                            elif 'serial=' in line:
+                                info['serial_number'] = line.split('=')[1]
+                        
+                        logger.info(f"成功读取证书信息: {domain}")
+                        return info
+                except Exception as e:
+                    logger.info(f"无法使用openssl读取证书信息，使用默认值: {e}")
+            
+            # 如果无法读取实际证书信息，返回默认值
             return {
                 'not_after': datetime.now() + timedelta(days=self.config.certificate_validity_days),
                 'not_before': datetime.now(),
@@ -677,7 +708,13 @@ class CertificateService:
             }
         except Exception as e:
             logger.error(f"读取证书信息失败: {str(e)}")
-            return {}
+            return {
+                'not_after': datetime.now() + timedelta(days=self.config.certificate_validity_days),
+                'not_before': datetime.now(),
+                'issuer': "Let's Encrypt",
+                'subject': domain,
+                'serial_number': "1234567890"
+            }
     
     def _get_provider_instance(self, provider) -> Optional[BaseProvider]:
         """

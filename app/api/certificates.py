@@ -304,8 +304,7 @@ async def download_certificate(certificate_id: int):
         if not certificate:
             raise HTTPException(status_code=404, detail="证书不存在")
         
-        # 构建证书文件路径
-        # 首先尝试使用证书名称，然后尝试域名名称
+        # 构建证书文件路径 - 只使用certbot_config/live目录（真实存储位置）
         cert_name = certificate.name or certificate.domain.name
         
         # 检查可能的证书文件路径
@@ -316,19 +315,21 @@ async def download_certificate(certificate_id: int):
         
         # 如果证书名称包含域名，也尝试提取子域名
         if certificate.domain.name in cert_name and cert_name != certificate.domain.name:
-            # 尝试从证书名称中提取实际的域名部分
-            if certificate.domain.name in cert_name:
-                # 如果证书名称是 "lal.hualuo063.cn SSL证书"，提取 "lal.hualuo063.cn"
-                actual_domain = cert_name.split()[0]  # 取第一个空格前的部分
-                possible_paths.append(os.path.join("data", "certificates", "certbot_config", "live", actual_domain))
+            # 如果证书名称是 "lal.hualuo063.cn SSL证书"，提取 "lal.hualuo063.cn"
+            actual_domain = cert_name.split()[0]  # 取第一个空格前的部分
+            possible_paths.append(os.path.join("data", "certificates", "certbot_config", "live", actual_domain))
         
+        # 查找存在的证书文件
         certbot_config_path = None
         for path in possible_paths:
             if os.path.exists(os.path.join(path, "fullchain.pem")):
                 certbot_config_path = path
+                logger.info(f"找到证书文件路径: {path}")
                 break
         
         if not certbot_config_path:
+            # 记录所有尝试的路径，便于调试
+            logger.error(f"证书文件不存在，尝试的路径: {possible_paths}")
             raise HTTPException(status_code=404, detail="证书文件不存在")
         
         # 检查证书文件是否存在
