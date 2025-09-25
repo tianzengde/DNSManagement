@@ -1662,24 +1662,19 @@ class DNSManager {
         const domainSelect = document.getElementById('certificateDomain');
         const subdomainInput = document.getElementById('certificateSubdomain');
         const nameInput = document.getElementById('certificateName');
-        const domainSuffix = document.getElementById('certificateDomainSuffix');
         
         if (domainId) {
             const domainName = domainSelect.options[domainSelect.selectedIndex].text;
             const subdomain = subdomainInput.value.trim();
             
-            // 更新域名后缀显示
-            domainSuffix.textContent = `.${domainName}`;
-            
-            // 更新证书名称
+            // 自动生成证书名称
             if (subdomain) {
-                nameInput.value = `${subdomain}.${domainName} SSL证书`;
+                nameInput.value = `${subdomain}.${domainName}`;
             } else {
-                nameInput.value = `${domainName} SSL证书`;
+                nameInput.value = `${domainName}`;
             }
         } else {
-            // 清空显示
-            domainSuffix.textContent = '请先选择域名';
+            // 清空证书名称
             nameInput.value = '';
         }
     }
