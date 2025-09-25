@@ -1,18 +1,22 @@
-"""应用配置模块"""
+"""应用配置"""
 import os
 from pathlib import Path
 from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    """应用配置"""
+    """应用设置"""
     
-    # 应用基础配置
-    app_name: str = "域名管理系统"
+    # 应用配置
+    app_name: str = "DNS证书管理系统"
     app_version: str = "1.0.0"
     debug: bool = False
     
-    # 数据库配置 - 使用相对路径存储到data目录
+    # 日志配置
+    log_level: str = "INFO"
+    log_file: str = "logs/app.log"
+    
+    # 数据库配置
     database_url: str = "sqlite://./data/dns_management.db"
     
     # 服务器配置
@@ -20,13 +24,11 @@ class Settings(BaseSettings):
     port: int = 8000
     
     # 安全配置
-    secret_key: str = "your-secret-key-change-in-production"
+    secret_key: str = "your-secret-key-here"
     
-    # 日志配置
-    log_level: str = "INFO"
-    log_file: str = "logs/app.log"
+    # 定时任务配置
+    scheduler_timezone: str = "Asia/Shanghai"
     
-    # 确保data和logs目录存在
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # 创建必要的目录
@@ -35,8 +37,9 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
-        env_file_encoding = "utf-8"
+        env_prefix = "DNS_"
+        extra = "ignore"  # 忽略额外的环境变量
 
 
-# 全局配置实例
+# 创建全局设置实例
 settings = Settings()

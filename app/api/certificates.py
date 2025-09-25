@@ -7,11 +7,15 @@ from app.schemas import (
     CertificateCreate, CertificateUpdate, CertificateResponse,
     CertificateRenewRequest, CertificateRenewResponse
 )
+from app.services.certificate_service import CertificateService
 from datetime import datetime, timedelta
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/certificates", tags=["certificates"])
+
+# 创建证书服务实例
+certificate_service = CertificateService()
 
 
 @router.get("/", response_model=List[CertificateResponse])
@@ -159,3 +163,112 @@ async def check_certificate_status(certificate_id: int):
         "status": certificate.status,
         "not_after": certificate.not_after
     }
+
+
+@router.post("/request/{domain_id}")
+async def request_certificate(domain_id: int, request_data: dict = None):
+    """申请SSL证书（DNS验证）"""
+    try:
+        # 检查域名是否存在
+        domain = await Domain.get(id=domain_id)
+        if not domain:
+            raise HTTPException(status_code=404, detail="域名不存在")
+        
+        # 从请求数据中提取参数
+        if request_data:
+            full_domain = request_data.get('full_domain')
+            subdomain = request_data.get('subdomain')
+            name = request_data.get('name')
+            auto_renew = request_data.get('auto_renew', True)
+        else:
+            full_domain = None
+            subdomain = None
+            name = None
+            auto_renew = True
+        
+        # 调用证书服务申请证书
+        result = await certificate_service.request_certificate(
+            domain_id, 
+            subdomain=subdomain,
+            full_domain=full_domain,
+            name=name,
+            auto_renew=auto_renew
+        )
+        
+        if result['success']:
+            return {
+                "success": True,
+                "message": result['message'],
+                "certificate_id": result.get('certificate_id'),
+                "domain": result.get('domain')
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result['message'])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"申请证书失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"申请证书失败: {str(e)}")
+
+
+@router.post("/renew/{certificate_id}")
+async def renew_certificate_api(certificate_id: int):
+    """续期证书（DNS验证）"""
+    try:
+        # 检查证书是否存在
+        certificate = await Certificate.get(id=certificate_id)
+        if not certificate:
+            raise HTTPException(status_code=404, detail="证书不存在")
+        
+        # 调用证书服务续期证书
+        result = await certificate_service.renew_certificate(certificate_id)
+        
+        if result['success']:
+            return {
+                "success": True,
+                "message": result['message'],
+                "renewed_at": result.get('renewed_at')
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result['message'])
+            
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"续期证书失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"续期证书失败: {str(e)}")
+
+
+@router.get("/domains/{domain_id}/available")
+async def get_available_subdomains(domain_id: int):
+    """获取可用于申请证书的子域名"""
+    try:
+        # 检查域名是否存在
+        domain = await Domain.get(id=domain_id)
+        if not domain:
+            raise HTTPException(status_code=404, detail="域名不存在")
+        
+        # 获取该域名的所有DNS记录
+        from app.models import DNSRecord
+        records = await DNSRecord.filter(domain_id=domain_id).all()
+        
+        # 提取子域名
+        subdomains = set()
+        for record in records:
+            if record.name != domain.name and record.name.endswith(f".{domain.name}"):
+                subdomain = record.name.replace(f".{domain.name}", "")
+                if subdomain:
+                    subdomains.add(subdomain)
+        
+        return {
+            "domain": domain.name,
+            "subdomains": list(subdomains),
+            "main_domain_available": True
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"获取可用子域名失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取可用子域名失败: {str(e)}")

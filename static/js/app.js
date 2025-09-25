@@ -1554,13 +1554,13 @@ class DNSManager {
                     <button class="btn btn-primary" onclick="app.checkCertificateStatus(${cert.id})">
                         🔍 检查
                     </button>
-                    <button class="btn btn-secondary" onclick="app.renewCertificate(${cert.id})">
+                    <button class="btn btn-secondary" onclick="app.renewCertificate(${cert.id}, this)">
                         🔄 续期
                     </button>
                     <button class="btn btn-warning" onclick="app.editCertificate(${cert.id})">
                         ✏️ 编辑
                     </button>
-                    <button class="btn btn-danger" onclick="app.deleteCertificate(${cert.id})">
+                    <button class="btn btn-danger" onclick="app.deleteCertificate(${cert.id}, this)">
                         🗑️ 删除
                     </button>
                 </td>
@@ -1639,24 +1639,21 @@ class DNSManager {
         }
     }
 
-    async renewCertificate(certificateId) {
+    async renewCertificate(certificateId, buttonElement = null) {
         if (!confirm('确定要续期这个证书吗？')) return;
 
         try {
-            const response = await fetch(`/api/certificates/${certificateId}/renew`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ certificate_id: certificateId, force: false })
-            });
-            const result = await response.json();
+            const response = await this.apiCall(`/api/certificates/renew/${certificateId}`, {
+                method: 'POST'
+            }, buttonElement, '续期中...');
 
-            if (result.success) {
-                this.showAlert('certificates-alert', '证书续期成功', 'success');
+            if (response.ok) {
+                const result = await response.json();
+                this.showAlert('certificates-alert', result.message, 'success');
                 this.loadCertificates();
             } else {
-                this.showAlert('certificates-alert', '续期失败: ' + result.message, 'error');
+                const error = await response.json();
+                this.showAlert('certificates-alert', '续期失败: ' + error.detail, 'error');
             }
         } catch (error) {
             this.showAlert('certificates-alert', '续期失败: ' + error.message, 'error');
@@ -1665,21 +1662,202 @@ class DNSManager {
 
     showCertificateModal(certificateId = null) {
         this.currentCertificateId = certificateId;
-        // 这里应该创建证书模态框，暂时显示提示
-        this.showAlert('certificates-alert', '证书管理功能开发中...', 'warning');
+        this.showRequestCertificateModal();
+    }
+
+    async showRequestCertificateModal() {
+        // 获取域名列表
+        try {
+            const response = await fetch('/api/domains/');
+            const domains = await response.json();
+            
+            if (domains.length === 0) {
+                this.showAlert('certificates-alert', '请先添加域名', 'warning');
+                return;
+            }
+            
+            // 创建申请证书模态框
+            const modalContent = `
+                <div class="modal" id="requestCertificateModal" style="display: block;">
+                    <div class="modal-content" style="max-width: 600px;">
+                        <div class="modal-header">
+                            <h3>申请SSL证书</h3>
+                            <span class="close" onclick="app.closeRequestCertificateModal()">&times;</span>
+                        </div>
+                        <div class="modal-body">
+                            <form id="requestCertificateForm">
+                                <div class="form-group">
+                                    <label for="certificateDomain">选择域名</label>
+                                    <select id="certificateDomain" required>
+                                        <option value="">请选择域名</option>
+                                        ${domains.map(domain => `<option value="${domain.id}">${domain.name}</option>`).join('')}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="certificateSubdomain">子域名（可选）</label>
+                                    <div style="display: flex; align-items: center; gap: 5px;">
+                                        <input type="text" id="certificateSubdomain" placeholder="例如: www, api, home" style="flex: 0 0 200px;">
+                                        <span id="certificateDomainSuffix" style="color: #666; font-weight: bold;">请先选择域名</span>
+                                    </div>
+                                    <small class="form-text">留空则申请主域名证书</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="certificateName">证书名称</label>
+                                    <input type="text" id="certificateName" required placeholder="证书显示名称">
+                                </div>
+                                <div class="form-group">
+                                    <label>
+                                        <input type="checkbox" id="certificateAutoRenew" checked> 自动续期
+                                    </label>
+                                </div>
+                                <div style="text-align: right; margin-top: 2rem;">
+                                    <button type="button" class="btn btn-secondary" onclick="app.closeRequestCertificateModal()">取消</button>
+                                    <button type="submit" class="btn btn-primary">申请证书</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // 移除已存在的模态框
+            const existingModal = document.getElementById('requestCertificateModal');
+            if (existingModal) {
+                existingModal.remove();
+            }
+            
+            // 添加新模态框
+            document.body.insertAdjacentHTML('beforeend', modalContent);
+            
+            // 绑定表单提交事件
+            document.getElementById('requestCertificateForm').addEventListener('submit', (e) => {
+                this.handleRequestCertificate(e);
+            });
+            
+            // 绑定域名选择事件
+            document.getElementById('certificateDomain').addEventListener('change', (e) => {
+                this.updateCertificateName(e.target.value);
+            });
+            
+            // 绑定子域名输入事件
+            document.getElementById('certificateSubdomain').addEventListener('input', (e) => {
+                const domainId = document.getElementById('certificateDomain').value;
+                if (domainId) {
+                    this.updateCertificateName(domainId);
+                }
+            });
+            
+        } catch (error) {
+            this.showAlert('certificates-alert', '加载域名列表失败: ' + error.message, 'error');
+        }
+    }
+
+    updateCertificateName(domainId) {
+        const domainSelect = document.getElementById('certificateDomain');
+        const subdomainInput = document.getElementById('certificateSubdomain');
+        const nameInput = document.getElementById('certificateName');
+        const domainSuffix = document.getElementById('certificateDomainSuffix');
+        
+        if (domainId) {
+            const domainName = domainSelect.options[domainSelect.selectedIndex].text;
+            const subdomain = subdomainInput.value.trim();
+            
+            // 更新域名后缀显示
+            domainSuffix.textContent = `.${domainName}`;
+            
+            // 更新证书名称
+            if (subdomain) {
+                nameInput.value = `${subdomain}.${domainName} SSL证书`;
+            } else {
+                nameInput.value = `${domainName} SSL证书`;
+            }
+        } else {
+            // 清空显示
+            domainSuffix.textContent = '请先选择域名';
+            nameInput.value = '';
+        }
+    }
+
+    async handleRequestCertificate(e) {
+        e.preventDefault();
+        
+        // 获取提交按钮并显示加载动画
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        if (submitButton) {
+            this.showLoadingSpinner(submitButton, '申请中...');
+        }
+
+        // 构建完整域名
+        const domainSelect = document.getElementById('certificateDomain');
+        const domainName = domainSelect.options[domainSelect.selectedIndex].text;
+        const subdomainPrefix = document.getElementById('certificateSubdomain').value.trim();
+        
+        let fullDomain;
+        if (subdomainPrefix) {
+            fullDomain = `${subdomainPrefix}.${domainName}`;
+        } else {
+            fullDomain = domainName;
+        }
+
+        const formData = {
+            domain_id: parseInt(document.getElementById('certificateDomain').value),
+            full_domain: fullDomain,
+            subdomain: subdomainPrefix || null,
+            name: document.getElementById('certificateName').value,
+            auto_renew: document.getElementById('certificateAutoRenew').checked
+        };
+
+        try {
+            const response = await fetch(`/api/certificates/request/${formData.domain_id}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    subdomain: formData.subdomain,
+                    full_domain: formData.full_domain,
+                    name: formData.name,
+                    auto_renew: formData.auto_renew
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.showAlert('certificates-alert', result.message, 'success');
+                this.closeRequestCertificateModal();
+                this.loadCertificates(); // 重新加载证书列表
+            } else {
+                const error = await response.json();
+                this.showAlert('certificates-alert', '申请证书失败: ' + error.detail, 'error');
+            }
+        } catch (error) {
+            this.showAlert('certificates-alert', '申请证书失败: ' + error.message, 'error');
+        } finally {
+            // 隐藏加载动画
+            if (submitButton) {
+                this.hideLoadingSpinner(submitButton);
+            }
+        }
+    }
+
+    closeRequestCertificateModal() {
+        const modal = document.getElementById('requestCertificateModal');
+        if (modal) {
+            modal.remove();
+        }
     }
 
     editCertificate(certificateId) {
         this.showCertificateModal(certificateId);
     }
 
-    async deleteCertificate(certificateId) {
+    async deleteCertificate(certificateId, buttonElement = null) {
         if (!confirm('确定要删除这个证书吗？')) return;
 
         try {
-            const response = await fetch(`/api/certificates/${certificateId}`, {
+            const response = await this.apiCall(`/api/certificates/${certificateId}`, {
                 method: 'DELETE'
-            });
+            }, buttonElement, '删除中...');
 
             if (response.ok) {
                 this.showAlert('certificates-alert', '证书删除成功', 'success');
