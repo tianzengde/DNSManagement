@@ -69,6 +69,10 @@ class HuaweiProvider(BaseProvider):
             canonical_headers.append(f"{header}:{value.strip()}")
         return '\n'.join(canonical_headers) + '\n'
     
+    def _hex_encode_sha256_hash(self, body: str) -> str:
+        """计算请求体的SHA256哈希值"""
+        return hashlib.sha256(body.encode('utf-8')).hexdigest()
+    
     def _sign_request(self, method: str, uri: str, query_params: Dict[str, str], 
                      headers: Dict[str, str], body: str = "") -> Dict[str, str]:
         """签名请求 - 完全按照ddns-go的签名方式"""
@@ -86,7 +90,7 @@ class HuaweiProvider(BaseProvider):
         signed_headers = sorted([k.lower() for k in all_headers.keys()])
         
         # 计算payload hash
-        payload_hash = hashlib.sha256(body.encode('utf-8')).hexdigest()
+        payload_hash = self._hex_encode_sha256_hash(body)
         
         # 构建规范请求
         canonical_uri = self._canonical_uri(uri)
@@ -128,7 +132,7 @@ class HuaweiProvider(BaseProvider):
                 f"{self.base_url}{uri}",
                 params=query_params,
                 headers=headers,
-                timeout=30
+                timeout=60
             )
             response.raise_for_status()
             data = response.json()
@@ -173,7 +177,7 @@ class HuaweiProvider(BaseProvider):
                 f"{self.base_url}{uri}",
                 params=query_params,
                 headers=headers,
-                timeout=30
+                timeout=60
             )
             response.raise_for_status()
             data = response.json()
@@ -191,9 +195,20 @@ class HuaweiProvider(BaseProvider):
                 for record in data.get("recordsets", [])
             ]
     
-    async def add_record(self, domain: str, record: Dict[str, Any]) -> bool:
-        """添加解析记录"""
-        uri = f"/v2.1/zones/{domain}/recordsets"
+    async def add_record(self, domain: str, record: Dict[str, Any]) -> str:
+        """添加解析记录，返回记录ID"""
+        # 首先获取域名ID
+        zones = await self.get_domains()
+        domain_id = None
+        for zone in zones:
+            if zone["name"] == domain or zone["name"] == f"{domain}.":
+                domain_id = zone["id"]
+                break
+        
+        if not domain_id:
+            raise Exception(f"未找到域名 {domain} 的zone_id")
+        
+        uri = f"/v2.1/zones/{domain_id}/recordsets"
         headers = {
             "Content-Type": "application/json",
             "X-Sdk-Date": datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
@@ -217,18 +232,36 @@ class HuaweiProvider(BaseProvider):
                 f"{self.base_url}{uri}",
                 json=body,
                 headers=headers,
-                timeout=30
+                timeout=60
             )
             response.raise_for_status()
-            return True
+            
+            # 解析响应获取记录ID
+            result = response.json()
+            record_id = result.get("id")
+            if not record_id:
+                raise Exception("服务商API未返回记录ID")
+            
+            return str(record_id)
     
     async def update_record(self, domain: str, record_id: str, record: Dict[str, Any]) -> bool:
         """更新解析记录"""
-        # 先获取Token
-        await self._get_token()
+        # 首先获取域名ID
+        zones = await self.get_domains()
+        domain_id = None
+        for zone in zones:
+            if zone["name"] == domain or zone["name"] == f"{domain}.":
+                domain_id = zone["id"]
+                break
         
-        uri = f"/v2/zones/{domain}/recordsets/{record_id}"
-        headers = self._get_headers()
+        if not domain_id:
+            raise Exception(f"未找到域名 {domain} 的zone_id")
+        
+        uri = f"/v2.1/zones/{domain_id}/recordsets/{record_id}"
+        headers = {
+            "Content-Type": "application/json",
+            "X-Sdk-Date": datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
+        }
         
         body = {
             "name": record["name"],
@@ -240,19 +273,33 @@ class HuaweiProvider(BaseProvider):
         if record.get("priority"):
             body["priority"] = record["priority"]
         
+        body_str = json.dumps(body)
+        headers = self._sign_request("PUT", uri, {}, headers, body_str)
+        
         async with httpx.AsyncClient() as client:
             response = await client.put(
                 f"{self.base_url}{uri}",
                 json=body,
                 headers=headers,
-                timeout=30
+                timeout=60
             )
             response.raise_for_status()
             return True
     
     async def delete_record(self, domain: str, record_id: str) -> bool:
         """删除解析记录"""
-        uri = f"/v2/zones/{domain}/recordsets/{record_id}"
+        # 首先获取域名ID
+        zones = await self.get_domains()
+        domain_id = None
+        for zone in zones:
+            if zone["name"] == domain or zone["name"] == f"{domain}.":
+                domain_id = zone["id"]
+                break
+        
+        if not domain_id:
+            raise Exception(f"未找到域名 {domain} 的zone_id")
+        
+        uri = f"/v2.1/zones/{domain_id}/recordsets/{record_id}"
         headers = {
             "Content-Type": "application/json",
             "X-Sdk-Date": datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
@@ -264,7 +311,7 @@ class HuaweiProvider(BaseProvider):
             response = await client.delete(
                 f"{self.base_url}{uri}",
                 headers=headers,
-                timeout=30
+                timeout=60
             )
             response.raise_for_status()
             return True

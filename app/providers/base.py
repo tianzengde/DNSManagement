@@ -23,8 +23,8 @@ class BaseProvider(ABC):
         pass
     
     @abstractmethod
-    async def add_record(self, domain: str, record: Dict[str, Any]) -> bool:
-        """添加解析记录"""
+    async def add_record(self, domain: str, record: Dict[str, Any]) -> str:
+        """添加解析记录，返回记录ID"""
         pass
     
     @abstractmethod

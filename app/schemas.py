@@ -49,16 +49,8 @@ class DomainBase(BaseModel):
     auto_update: bool = Field(False, description="是否自动更新")
 
 
-class DomainCreate(DomainBase):
-    """创建域名模型"""
-    pass
 
 
-class DomainUpdate(BaseModel):
-    """更新域名模型"""
-    name: Optional[str] = None
-    enabled: Optional[bool] = None
-    auto_update: Optional[bool] = None
 
 
 class DomainResponse(DomainBase):

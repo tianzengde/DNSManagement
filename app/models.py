@@ -79,6 +79,7 @@ class DNSRecord(Model):
     ttl = fields.IntField(default=600, description="TTL值")
     priority = fields.IntField(null=True, description="优先级")
     enabled = fields.BooleanField(default=True, description="是否启用")
+    external_id = fields.CharField(max_length=255, null=True, description="服务商记录ID")
     created_at = fields.DatetimeField(auto_now_add=True)
     updated_at = fields.DatetimeField(auto_now=True)
     

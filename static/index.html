@@ -36,13 +36,13 @@
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>ID</th>
-                                        <th>名称</th>
-                                        <th>类型</th>
-                                        <th>启用</th>
-                                        <th>连接状态</th>
-                                        <th>最后测试</th>
-                                        <th>操作</th>
+                                        <th style="text-align: center;">ID</th>
+                                        <th style="text-align: center;">名称</th>
+                                        <th style="text-align: center;">类型</th>
+                                        <th style="text-align: center;">启用</th>
+                                        <th style="text-align: center;">连接状态</th>
+                                        <th style="text-align: center;">最后测试</th>
+                                        <th style="text-align: center;">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="providers-table">
@@ -67,9 +67,6 @@
                                         style="padding: 0.75rem 1rem; border-radius: 8px; border: 2px solid rgba(116, 185, 255, 0.2); background: rgba(255, 255, 255, 0.9); min-width: 200px;">
                                     <option value="">🔍 选择服务商查看域名</option>
                                 </select>
-                                <button class="btn btn-primary" onclick="app.showDomainModal()">
-                                    ➕ 添加域名
-                                </button>
                             </div>
                         </div>
                         <div id="domains-alert"></div>
@@ -77,14 +74,12 @@
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>记录名称</th>
-                                        <th>所属域名</th>
-                                        <th>服务商</th>
-                                        <th>记录类型</th>
-                                        <th>记录值</th>
-                                        <th>TTL</th>
-                                        <th>状态</th>
-                                        <th>操作</th>
+                                        <th style="text-align: center;">域名</th>
+                                        <th style="text-align: center;">服务商</th>
+                                        <th style="text-align: center;">状态</th>
+                                        <th style="text-align: center;">自动更新</th>
+                                        <th style="text-align: center;">创建时间</th>
+                                        <th style="text-align: center;">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody id="domains-table">
@@ -161,10 +156,6 @@
             
             // 然后创建侧边栏
             const sidebar = new Sidebar();
-            
-            // 创建模态框
-            const providerModal = ModalUtils.createProviderModal();
-            const domainModal = ModalUtils.createDomainModal();
         });
     </script>
 </body>

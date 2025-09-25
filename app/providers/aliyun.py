@@ -111,8 +111,8 @@ class AliyunProvider(BaseProvider):
                 for record in data.get("DomainRecords", {}).get("Record", [])
             ]
     
-    async def add_record(self, domain: str, record: Dict[str, Any]) -> bool:
-        """添加解析记录"""
+    async def add_record(self, domain: str, record: Dict[str, Any]) -> str:
+        """添加解析记录，返回记录ID"""
         params = {
             "Action": "AddDomainRecord",
             "DomainName": domain,
@@ -133,7 +133,14 @@ class AliyunProvider(BaseProvider):
                 timeout=30
             )
             response.raise_for_status()
-            return True
+            
+            # 解析响应获取记录ID
+            result = response.json()
+            record_id = result.get("RecordId")
+            if not record_id:
+                raise Exception("服务商API未返回记录ID")
+            
+            return str(record_id)
     
     async def update_record(self, domain: str, record_id: str, record: Dict[str, Any]) -> bool:
         """更新解析记录"""

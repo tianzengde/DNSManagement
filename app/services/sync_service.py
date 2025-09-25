@@ -134,6 +134,7 @@ class DomainSyncService:
                 record_name = record_data.get('name', '').rstrip('.')
                 record_type = self._get_record_type(record_data.get('type', ''))
                 record_value = record_data.get('records', [])
+                external_id = record_data.get('id', '')
                 
                 if not record_name or not record_type or not record_value:
                     continue
@@ -149,7 +150,8 @@ class DomainSyncService:
                     'value': record_value,
                     'ttl': record_data.get('ttl', 600),
                     'priority': record_data.get('priority'),
-                    'enabled': True
+                    'enabled': True,
+                    'external_id': external_id
                 }
             
             # 更新或创建记录
@@ -157,10 +159,12 @@ class DomainSyncService:
                 if key in existing_records_map:
                     # 更新现有记录
                     existing_record = existing_records_map[key]
-                    existing_record.value = record_data['value']
-                    existing_record.ttl = record_data['ttl']
-                    existing_record.priority = record_data['priority']
-                    await existing_record.save()
+                    await existing_record.update_from_dict({
+                        'value': record_data['value'],
+                        'ttl': record_data['ttl'],
+                        'priority': record_data['priority'],
+                        'external_id': record_data['external_id']
+                    })
                 else:
                     # 创建新记录
                     await DNSRecord.create(

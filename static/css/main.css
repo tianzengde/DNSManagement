@@ -483,3 +483,130 @@ input:checked + .slider:before {
 ::-webkit-scrollbar-thumb:hover {
     background: linear-gradient(135deg, #0984e3 0%, #74b9ff 100%);
 }
+
+/* 响应式设计 - 小屏幕优化 */
+@media (max-width: 1200px) {
+    .table {
+        width: 100%;
+        table-layout: auto;
+    }
+    
+    .table th,
+    .table td {
+        padding: 8px 4px;
+        word-break: break-word;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .main-content {
+        margin-left: 0;
+        padding: 1rem;
+    }
+    
+    .table {
+        width: 100%;
+        font-size: 12px;
+        table-layout: auto;
+    }
+    
+    .table th,
+    .table td {
+        padding: 6px 3px;
+        word-break: break-word;
+    }
+    
+    /* 按钮容器在小屏幕上允许换行 */
+    .table td div[style*="display: flex"] {
+        flex-wrap: wrap !important;
+        gap: 4px !important;
+    }
+    
+    /* 开关样式在小屏幕上的优化 */
+    .switch {
+        width: 45px !important;
+        height: 22px !important;
+    }
+    
+    .slider {
+        border-radius: 22px !important;
+    }
+    
+    .slider:before {
+        height: 16px !important;
+        width: 16px !important;
+        left: 3px !important;
+        bottom: 3px !important;
+    }
+    
+    input:checked + .slider:before {
+        transform: translateX(23px) !important;
+    }
+    
+    /* 状态标签在小屏幕上的优化 */
+    .status {
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+        border-radius: 12px !important;
+        white-space: nowrap !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .table {
+        width: 100%;
+        font-size: 11px;
+        table-layout: auto;
+    }
+    
+    .table th,
+    .table td {
+        padding: 4px 2px;
+        word-break: break-word;
+    }
+    
+    /* 超小屏幕时稍微缩小按钮 */
+    .btn {
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+        min-width: 50px !important;
+    }
+    
+    .btn-sm {
+        font-size: 11px !important;
+        padding: 4px 8px !important;
+        min-width: 50px !important;
+    }
+    
+    /* 开关样式在超小屏幕上的进一步优化 */
+    .switch {
+        width: 40px !important;
+        height: 20px !important;
+    }
+    
+    .slider {
+        border-radius: 20px !important;
+    }
+    
+    .slider:before {
+        height: 14px !important;
+        width: 14px !important;
+        left: 3px !important;
+        bottom: 3px !important;
+    }
+    
+    input:checked + .slider:before {
+        transform: translateX(20px) !important;
+    }
+    
+    /* 状态标签在超小屏幕上的进一步优化 */
+    .status {
+        font-size: 10px !important;
+        padding: 3px 6px !important;
+        border-radius: 10px !important;
+    }
+}
