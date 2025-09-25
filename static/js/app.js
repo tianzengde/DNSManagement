@@ -769,10 +769,8 @@ class DNSManager {
                         <form id="addDNSRecordForm">
                             <div class="form-group">
                                 <label for="addRecordName">记录名称</label>
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <input type="text" id="addRecordName" placeholder="如：www, mail, @ 等" required style="width: 200px;">
-                                    <span style="color: #666; font-size: 14px;">.${domainName}</span>
-                                </div>
+                                <input type="text" id="addRecordName" placeholder="如：www, mail, @ 等" required>
+                                <small class="form-text">完整域名: ${domainName}</small>
                             </div>
                             <div class="form-group">
                                 <label for="addRecordType">记录类型</label>
@@ -787,18 +785,7 @@ class DNSManager {
                             </div>
                             <div class="form-group">
                                 <label for="addRecordValue">记录值</label>
-                                <textarea id="addRecordValue" rows="3" placeholder="如：192.168.1.1, example.com 等" required style="
-                                    width: 100%; 
-                                    padding: 8px 12px; 
-                                    border: 1px solid #ddd; 
-                                    border-radius: 4px; 
-                                    font-size: 14px; 
-                                    font-family: inherit; 
-                                    line-height: 1.4;
-                                    resize: vertical;
-                                    background-color: #fff;
-                                    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-                                "></textarea>
+                                <textarea id="addRecordValue" rows="3" placeholder="如：192.168.1.1, example.com 等" required class="form-textarea"></textarea>
                             </div>
                             <div class="form-group">
                                 <label for="addRecordTtl">TTL</label>
@@ -820,43 +807,6 @@ class DNSManager {
                         </form>
                     </div>
                 </div>
-                <style>
-                    #addRecordValue:focus {
-                        outline: none;
-                        border-color: #007bff;
-                        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-                    }
-                    #addRecordValue:hover {
-                        border-color: #bbb;
-                    }
-                    .form-group {
-                        margin-bottom: 1rem;
-                    }
-                    .form-group label {
-                        display: block;
-                        margin-bottom: 0.5rem;
-                        font-weight: 500;
-                        color: #333;
-                    }
-                    .form-group input, .form-group select {
-                        width: 100%;
-                        padding: 8px 12px;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        font-size: 14px;
-                        font-family: inherit;
-                        background-color: #fff;
-                        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-                    }
-                    .form-group input:focus, .form-group select:focus {
-                        outline: none;
-                        border-color: #007bff;
-                        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-                    }
-                    .form-group input:hover, .form-group select:hover {
-                        border-color: #bbb;
-                    }
-                </style>
             </div>
         `;
         
@@ -1066,18 +1016,7 @@ class DNSManager {
                             </div>
                             <div class="form-group">
                                 <label for="editRecordValue">记录值</label>
-                                <textarea id="editRecordValue" rows="3" required style="
-                                    width: 100%; 
-                                    padding: 8px 12px; 
-                                    border: 1px solid #ddd; 
-                                    border-radius: 4px; 
-                                    font-size: 14px; 
-                                    font-family: inherit; 
-                                    line-height: 1.4;
-                                    resize: vertical;
-                                    background-color: #fff;
-                                    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-                                "></textarea>
+                                <textarea id="editRecordValue" rows="3" required class="form-textarea"></textarea>
                             </div>
                             <div class="form-group">
                                 <label for="editRecordTtl">TTL</label>
@@ -1099,43 +1038,6 @@ class DNSManager {
                         </form>
                     </div>
                 </div>
-                <style>
-                    #editRecordValue:focus {
-                        outline: none;
-                        border-color: #007bff;
-                        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-                    }
-                    #editRecordValue:hover {
-                        border-color: #bbb;
-                    }
-                    .form-group {
-                        margin-bottom: 1rem;
-                    }
-                    .form-group label {
-                        display: block;
-                        margin-bottom: 0.5rem;
-                        font-weight: 500;
-                        color: #333;
-                    }
-                    .form-group input, .form-group select {
-                        width: 100%;
-                        padding: 8px 12px;
-                        border: 1px solid #ddd;
-                        border-radius: 4px;
-                        font-size: 14px;
-                        font-family: inherit;
-                        background-color: #fff;
-                        transition: border-color 0.2s ease, box-shadow 0.2s ease;
-                    }
-                    .form-group input:focus, .form-group select:focus {
-                        outline: none;
-                        border-color: #007bff;
-                        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
-                    }
-                    .form-group input:hover, .form-group select:hover {
-                        border-color: #bbb;
-                    }
-                </style>
             </div>
         `;
         
@@ -1536,29 +1438,29 @@ class DNSManager {
             const notAfter = cert.not_after ? new Date(cert.not_after).toLocaleDateString() : '-';
 
             row.innerHTML = `
-                <td>${cert.name}</td>
-                <td>${cert.domain.name}</td>
-                <td>${typeText}</td>
-                <td>${cert.issuer || '-'}</td>
-                <td>${notBefore}</td>
-                <td>${notAfter}</td>
-                <td><span class="status ${statusClass}">${statusText}</span></td>
-                <td>
+                <td style="text-align: center;">${cert.name}</td>
+                <td style="text-align: center;">${cert.domain.name}</td>
+                <td style="text-align: center;">${typeText}</td>
+                <td style="text-align: center;">${cert.issuer || '-'}</td>
+                <td style="text-align: center;">${notBefore}</td>
+                <td style="text-align: center;">${notAfter}</td>
+                <td style="text-align: center;"><span class="status ${statusClass}">${statusText}</span></td>
+                <td style="text-align: center;">
                     <label class="switch">
                         <input type="checkbox" ${cert.auto_renew ? 'checked' : ''} 
                                onchange="app.toggleCertificateAutoRenew(${cert.id}, this.checked)">
                         <span class="slider"></span>
                     </label>
                 </td>
-                <td>
+                <td style="text-align: center;">
                     <button class="btn btn-primary" onclick="app.checkCertificateStatus(${cert.id})">
                         🔍 检查
                     </button>
                     <button class="btn btn-secondary" onclick="app.renewCertificate(${cert.id}, this)">
                         🔄 续期
                     </button>
-                    <button class="btn btn-warning" onclick="app.editCertificate(${cert.id})">
-                        ✏️ 编辑
+                    <button class="btn btn-success" onclick="app.downloadCertificate(${cert.id})">
+                        📥 下载
                     </button>
                     <button class="btn btn-danger" onclick="app.deleteCertificate(${cert.id}, this)">
                         🗑️ 删除
@@ -1695,10 +1597,7 @@ class DNSManager {
                                 </div>
                                 <div class="form-group">
                                     <label for="certificateSubdomain">子域名（可选）</label>
-                                    <div style="display: flex; align-items: center; gap: 5px;">
-                                        <input type="text" id="certificateSubdomain" placeholder="例如: www, api, home" style="flex: 0 0 200px;">
-                                        <span id="certificateDomainSuffix" style="color: #666; font-weight: bold;">请先选择域名</span>
-                                    </div>
+                                    <input type="text" id="certificateSubdomain" placeholder="例如: www, api, home">
                                     <small class="form-text">留空则申请主域名证书</small>
                                 </div>
                                 <div class="form-group">
@@ -1706,8 +1605,12 @@ class DNSManager {
                                     <input type="text" id="certificateName" required placeholder="证书显示名称">
                                 </div>
                                 <div class="form-group">
-                                    <label>
-                                        <input type="checkbox" id="certificateAutoRenew" checked> 自动续期
+                                    <label class="switch-container">
+                                        <span>自动续期</span>
+                                        <label class="switch">
+                                            <input type="checkbox" id="certificateAutoRenew" checked>
+                                            <span class="slider"></span>
+                                        </label>
                                     </label>
                                 </div>
                                 <div style="text-align: right; margin-top: 2rem;">
@@ -1847,8 +1750,33 @@ class DNSManager {
         }
     }
 
-    editCertificate(certificateId) {
-        this.showCertificateModal(certificateId);
+    async downloadCertificate(certificateId) {
+        try {
+            const response = await fetch(`/api/certificates/${certificateId}/download`);
+            
+            if (!response.ok) {
+                throw new Error('下载失败');
+            }
+            
+            // 获取证书信息用于文件名
+            const certResponse = await fetch(`/api/certificates/${certificateId}`);
+            const certData = await certResponse.json();
+            
+            // 创建下载链接
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${certData.name || 'certificate'}.zip`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+            
+            this.showAlert('certificates-alert', '证书下载成功', 'success');
+        } catch (error) {
+            this.showAlert('certificates-alert', '下载失败: ' + error.message, 'error');
+        }
     }
 
     async deleteCertificate(certificateId, buttonElement = null) {

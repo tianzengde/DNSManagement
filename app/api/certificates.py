@@ -1,5 +1,6 @@
 """证书管理API"""
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import FileResponse
 from tortoise.exceptions import DoesNotExist
 from typing import List
 from app.models import Certificate, Domain, CertificateType, CertificateStatus
@@ -10,6 +11,9 @@ from app.schemas import (
 from app.services.certificate_service import CertificateService
 from datetime import datetime, timedelta
 import logging
+import os
+import zipfile
+import tempfile
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/certificates", tags=["certificates"])
@@ -90,10 +94,12 @@ async def renew_certificate(certificate_id: int, renew_data: CertificateRenewReq
     # 这里应该实现实际的证书续期逻辑
     # 目前只是模拟续期
     try:
+        from datetime import timezone
+        
         # 更新证书状态和续期时间
         certificate.status = CertificateStatus.VALID
-        certificate.last_renewed_at = datetime.now()
-        certificate.not_after = datetime.now() + timedelta(days=90)  # 假设续期90天
+        certificate.last_renewed_at = datetime.now(timezone.utc)
+        certificate.not_after = datetime.now(timezone.utc) + timedelta(days=90)  # 假设续期90天
         await certificate.save()
         
         return CertificateRenewResponse(
@@ -124,7 +130,10 @@ async def get_certificates_by_domain(domain_id: int):
 @router.get("/expiring/soon", response_model=List[CertificateResponse])
 async def get_expiring_certificates(days: int = 30):
     """获取即将过期的证书"""
-    cutoff_date = datetime.now() + timedelta(days=days)
+    from datetime import timezone
+    
+    # 使用UTC时间来计算截止日期
+    cutoff_date = datetime.now(timezone.utc) + timedelta(days=days)
     certificates = await Certificate.filter(
         not_after__lte=cutoff_date,
         status__in=[CertificateStatus.VALID, CertificateStatus.EXPIRING_SOON]
@@ -143,12 +152,24 @@ async def check_certificate_status(certificate_id: int):
     
     # 这里应该实现实际的证书状态检查逻辑
     # 目前只是模拟状态检查
-    now = datetime.now()
+    from datetime import timezone
+    
+    # 获取当前UTC时间
+    now = datetime.now(timezone.utc)
     
     if certificate.not_after:
-        if certificate.not_after < now:
+        # 如果证书到期时间是naive datetime，转换为UTC时间
+        cert_not_after = certificate.not_after
+        if cert_not_after.tzinfo is None:
+            cert_not_after = cert_not_after.replace(tzinfo=timezone.utc)
+        
+        # 如果当前时间是naive datetime，转换为UTC时间
+        if now.tzinfo is None:
+            now = now.replace(tzinfo=timezone.utc)
+            
+        if cert_not_after < now:
             certificate.status = CertificateStatus.EXPIRED
-        elif certificate.not_after < now + timedelta(days=30):
+        elif cert_not_after < now + timedelta(days=30):
             certificate.status = CertificateStatus.EXPIRING_SOON
         else:
             certificate.status = CertificateStatus.VALID
@@ -272,3 +293,83 @@ async def get_available_subdomains(domain_id: int):
     except Exception as e:
         logger.error(f"获取可用子域名失败: {str(e)}")
         raise HTTPException(status_code=500, detail=f"获取可用子域名失败: {str(e)}")
+
+
+@router.get("/{certificate_id}/download")
+async def download_certificate(certificate_id: int):
+    """下载证书文件"""
+    try:
+        # 获取证书信息
+        certificate = await Certificate.get(id=certificate_id).prefetch_related('domain')
+        if not certificate:
+            raise HTTPException(status_code=404, detail="证书不存在")
+        
+        # 构建证书文件路径
+        # 首先尝试使用证书名称，然后尝试域名名称
+        cert_name = certificate.name or certificate.domain.name
+        
+        # 检查可能的证书文件路径
+        possible_paths = [
+            os.path.join("data", "certificates", "certbot_config", "live", cert_name),
+            os.path.join("data", "certificates", "certbot_config", "live", certificate.domain.name),
+        ]
+        
+        # 如果证书名称包含域名，也尝试提取子域名
+        if certificate.domain.name in cert_name and cert_name != certificate.domain.name:
+            # 尝试从证书名称中提取实际的域名部分
+            if certificate.domain.name in cert_name:
+                # 如果证书名称是 "lal.hualuo063.cn SSL证书"，提取 "lal.hualuo063.cn"
+                actual_domain = cert_name.split()[0]  # 取第一个空格前的部分
+                possible_paths.append(os.path.join("data", "certificates", "certbot_config", "live", actual_domain))
+        
+        certbot_config_path = None
+        for path in possible_paths:
+            if os.path.exists(os.path.join(path, "fullchain.pem")):
+                certbot_config_path = path
+                break
+        
+        if not certbot_config_path:
+            raise HTTPException(status_code=404, detail="证书文件不存在")
+        
+        # 检查证书文件是否存在
+        cert_file = os.path.join(certbot_config_path, "fullchain.pem")
+        key_file = os.path.join(certbot_config_path, "privkey.pem")
+        
+        if not os.path.exists(cert_file) or not os.path.exists(key_file):
+            raise HTTPException(status_code=404, detail="证书文件不存在")
+        
+        # 创建临时ZIP文件
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as temp_zip:
+            with zipfile.ZipFile(temp_zip.name, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                # 添加证书文件
+                zipf.write(cert_file, f"{cert_name}.crt")
+                zipf.write(key_file, f"{cert_name}.key")
+                
+                # 如果有证书链文件，也添加进去
+                chain_file = os.path.join(certbot_config_path, "chain.pem")
+                if os.path.exists(chain_file):
+                    zipf.write(chain_file, f"{cert_name}.chain.pem")
+        
+        # 返回ZIP文件
+        # 使用安全的文件名，避免中文字符编码问题
+        import urllib.parse
+        import re
+        
+        # 清理文件名，移除特殊字符和中文字符
+        clean_name = re.sub(r'[^\w\-_.]', '_', cert_name)
+        clean_name = clean_name.replace("SSL证书", "ssl_cert").replace(" ", "_")
+        safe_filename = f"{clean_name}_certificate.zip"
+        encoded_filename = urllib.parse.quote(safe_filename)
+        
+        return FileResponse(
+            path=temp_zip.name,
+            filename=safe_filename,
+            media_type="application/zip",
+            headers={"Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"}
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"下载证书失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"下载证书失败: {str(e)}")
