@@ -211,10 +211,26 @@ async def update_domain_record(record_id: int, record_data: DNSRecordUpdate):
     }
     
     # 构建API调用参数
+    record_type = type_mapping.get(update_dict.get('type', record.type), 'A')
+    record_value = update_dict.get('value', record.value)
+    
+    # 验证A记录的IP地址格式
+    if record_type == 'A':
+        import re
+        ip_pattern = r'^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$'
+        match = re.match(ip_pattern, record_value)
+        if not match:
+            raise HTTPException(status_code=400, detail="A记录的IP地址格式不正确")
+        
+        # 检查每个段是否在0-255范围内
+        for segment in match.groups():
+            if int(segment) > 255:
+                raise HTTPException(status_code=400, detail=f"IP地址段 {segment} 超出范围(0-255)")
+    
     api_record = {
         "name": update_dict.get('name', record.name),
-        "type": type_mapping.get(update_dict.get('type', record.type), 'A'),
-        "value": update_dict.get('value', record.value),
+        "type": record_type,
+        "value": record_value,
         "ttl": update_dict.get('ttl', record.ttl)
     }
     
@@ -230,7 +246,21 @@ async def update_domain_record(record_id: int, record_data: DNSRecordUpdate):
             raise HTTPException(status_code=500, detail="调用服务商API失败")
         
         # API调用成功，更新本地数据库
-        await record.update_from_dict(update_dict)
+        # 直接更新字段，避免update_from_dict的问题
+        if 'name' in update_dict:
+            record.name = update_dict['name']
+        if 'type' in update_dict:
+            record.type = update_dict['type']
+        if 'value' in update_dict:
+            record.value = update_dict['value']
+        if 'ttl' in update_dict:
+            record.ttl = update_dict['ttl']
+        if 'priority' in update_dict:
+            record.priority = update_dict['priority']
+        if 'enabled' in update_dict:
+            record.enabled = update_dict['enabled']
+        
+        await record.save()
         return record
         
     except Exception as e:

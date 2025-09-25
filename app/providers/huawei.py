@@ -161,7 +161,7 @@ class HuaweiProvider(BaseProvider):
             return []
         
         # 使用域名ID查询该域名下的所有记录
-        uri = f"/v2.1/zones/{domain_id}/recordsets"
+        uri = f"/v2/zones/{domain_id}/recordsets"
         query_params = {
             "limit": 100
         }
@@ -208,7 +208,7 @@ class HuaweiProvider(BaseProvider):
         if not domain_id:
             raise Exception(f"未找到域名 {domain} 的zone_id")
         
-        uri = f"/v2.1/zones/{domain_id}/recordsets"
+        uri = f"/v2/zones/{domain_id}/recordsets"
         headers = {
             "Content-Type": "application/json",
             "X-Sdk-Date": datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
@@ -230,11 +230,13 @@ class HuaweiProvider(BaseProvider):
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{self.base_url}{uri}",
-                json=body,
+                data=body_str,
                 headers=headers,
                 timeout=60
             )
-            response.raise_for_status()
+            if response.status_code not in [201, 202]:
+                error_detail = response.text
+                raise Exception(f"华为云API返回错误 {response.status_code}: {error_detail}")
             
             # 解析响应获取记录ID
             result = response.json()
@@ -257,7 +259,7 @@ class HuaweiProvider(BaseProvider):
         if not domain_id:
             raise Exception(f"未找到域名 {domain} 的zone_id")
         
-        uri = f"/v2.1/zones/{domain_id}/recordsets/{record_id}"
+        uri = f"/v2/zones/{domain_id}/recordsets/{record_id}"
         headers = {
             "Content-Type": "application/json",
             "X-Sdk-Date": datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')
@@ -279,11 +281,13 @@ class HuaweiProvider(BaseProvider):
         async with httpx.AsyncClient() as client:
             response = await client.put(
                 f"{self.base_url}{uri}",
-                json=body,
+                data=body_str,
                 headers=headers,
                 timeout=60
             )
-            response.raise_for_status()
+            if response.status_code not in [200, 202]:
+                error_detail = response.text
+                raise Exception(f"华为云API返回错误 {response.status_code}: {error_detail}")
             return True
     
     async def delete_record(self, domain: str, record_id: str) -> bool:
@@ -299,7 +303,7 @@ class HuaweiProvider(BaseProvider):
         if not domain_id:
             raise Exception(f"未找到域名 {domain} 的zone_id")
         
-        uri = f"/v2.1/zones/{domain_id}/recordsets/{record_id}"
+        uri = f"/v2/zones/{domain_id}/recordsets/{record_id}"
         headers = {
             "Content-Type": "application/json",
             "X-Sdk-Date": datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')

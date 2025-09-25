@@ -76,7 +76,7 @@ class DNSRecordBase(BaseModel):
 
 class DNSRecordCreate(DNSRecordBase):
     """创建DNS记录模型"""
-    domain_id: int = Field(..., description="域名ID")
+    pass
 
 
 class DNSRecordUpdate(BaseModel):

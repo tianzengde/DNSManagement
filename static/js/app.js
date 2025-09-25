@@ -112,7 +112,7 @@ class DNSManager {
                 <td style="text-align: center; vertical-align: middle;">
                     <label class="switch">
                         <input type="checkbox" ${provider.enabled ? 'checked' : ''} 
-                               onchange="app.toggleProvider(${provider.id}, this.checked)">
+                               onchange="app.toggleProvider(${provider.id}, this.checked, this)">
                         <span class="slider"></span>
                     </label>
                 </td>
@@ -120,16 +120,16 @@ class DNSManager {
                 <td style="text-align: center; vertical-align: middle;">${lastTest}</td>
                 <td style="text-align: center; vertical-align: middle;">
                     <div style="display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap;">
-                        <button class="btn btn-primary" onclick="app.testProvider(${provider.id})" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
+                        <button class="btn btn-primary" onclick="app.testProvider(${provider.id}, this)" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
                         🔍 测试
                     </button>
-                        <button class="btn btn-success" onclick="app.syncProvider(${provider.id})" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
+                        <button class="btn btn-success" onclick="app.syncProvider(${provider.id}, this)" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
                         🔄 同步
                     </button>
                         <button class="btn btn-secondary" onclick="app.editProvider(${provider.id})" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
                         ✏️ 编辑
                     </button>
-                        <button class="btn btn-danger" onclick="app.deleteProvider(${provider.id})" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
+                        <button class="btn btn-danger" onclick="app.deleteProvider(${provider.id}, this)" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
                         🗑️ 删除
                     </button>
                     </div>
@@ -250,7 +250,7 @@ class DNSManager {
                 <td style="text-align: center; vertical-align: middle;">
                     <div style="display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap;">
                         <button class="btn btn-sm btn-primary" onclick="app.viewDomainRecords(${domain.id}, '${domain.name}')" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">解析</button>
-                        <button class="btn btn-sm btn-danger" onclick="app.deleteDomain(${domain.id})" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">删除</button>
+                        <button class="btn btn-sm btn-danger" onclick="app.deleteDomain(${domain.id}, this)" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">删除</button>
                     </div>
                 </td>
             `;
@@ -350,15 +350,15 @@ class DNSManager {
         }
     }
 
-    async toggleProvider(providerId, enabled) {
+    async toggleProvider(providerId, enabled, buttonElement = null) {
         try {
-            const response = await fetch(`/api/providers/${providerId}`, {
+            const response = await this.apiCall(`/api/providers/${providerId}`, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({ enabled: enabled })
-            });
+            }, buttonElement, '更新中...');
 
             if (response.ok) {
                 this.showAlert('providers-alert', '状态更新成功', 'success');
@@ -372,11 +372,11 @@ class DNSManager {
         }
     }
 
-    async testProvider(providerId) {
+    async testProvider(providerId, buttonElement = null) {
         try {
-            const response = await fetch(`/api/providers/${providerId}/test`, {
+            const response = await this.apiCall(`/api/providers/${providerId}/test`, {
                 method: 'POST'
-            });
+            }, buttonElement, '测试中...');
             const result = await response.json();
 
             if (result.success) {
@@ -395,13 +395,13 @@ class DNSManager {
         this.showProviderModal(providerId);
     }
 
-    async deleteProvider(providerId) {
+    async deleteProvider(providerId, buttonElement = null) {
         if (!confirm('确定要删除这个服务商吗？')) return;
 
         try {
-            const response = await fetch(`/api/providers/${providerId}`, {
+            const response = await this.apiCall(`/api/providers/${providerId}`, {
                 method: 'DELETE'
-            });
+            }, buttonElement, '删除中...');
 
             if (response.ok) {
                 this.showAlert('providers-alert', '删除成功', 'success');
@@ -415,11 +415,11 @@ class DNSManager {
         }
     }
 
-    async syncProvider(providerId) {
+    async syncProvider(providerId, buttonElement = null) {
         try {
-            const response = await fetch(`/api/providers/${providerId}/sync`, {
+            const response = await this.apiCall(`/api/providers/${providerId}/sync`, {
                 method: 'POST'
-            });
+            }, buttonElement, '同步中...');
 
             if (response.ok) {
                 this.showAlert('providers-alert', '同步任务已启动，请稍后查看结果', 'success');
@@ -432,10 +432,15 @@ class DNSManager {
         }
     }
 
-    async syncAllProviders() {
+    async syncAllProviders(buttonElement = null) {
         if (!confirm('确定要同步所有服务商的域名吗？这可能需要一些时间。')) return;
 
         try {
+            // 显示加载动画
+            if (buttonElement) {
+                this.showLoadingSpinner(buttonElement, '同步中...');
+            }
+
             // 获取所有启用的服务商并逐个同步
             const response = await fetch('/api/providers/');
             const providers = await response.json();
@@ -455,6 +460,11 @@ class DNSManager {
             this.showAlert('providers-alert', `已启动 ${syncCount} 个服务商的同步任务`, 'success');
         } catch (error) {
             this.showAlert('providers-alert', '同步失败: ' + error.message, 'error');
+        } finally {
+            // 隐藏加载动画
+            if (buttonElement) {
+                this.hideLoadingSpinner(buttonElement);
+            }
         }
     }
 
@@ -558,7 +568,7 @@ class DNSManager {
                          <td style="padding: 12px 8px; vertical-align: middle; text-align: center; width: 15%;">
                              <div style="display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap;">
                                  <button class="btn btn-sm btn-secondary" onclick="app.editDNSRecord(${record.id})" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">编辑</button>
-                                 <button class="btn btn-sm btn-danger" onclick="app.deleteDNSRecord(${record.id})" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">删除</button>
+                                 <button class="btn btn-sm btn-danger" onclick="app.deleteDNSRecord(${record.id}, this)" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">删除</button>
                              </div>
                          </td>
                      </tr>
@@ -945,8 +955,26 @@ class DNSManager {
     async handleAddDNSRecord(e, domainId, domainName) {
         e.preventDefault();
 
+        // 获取提交按钮并显示加载动画
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        if (submitButton) {
+            this.showLoadingSpinner(submitButton, '添加中...');
+        }
+
+        // 构建完整的记录名
+        const recordNameInput = document.getElementById('addRecordName').value.trim();
+        let fullRecordName;
+        
+        if (recordNameInput === '@' || recordNameInput === '') {
+            // @ 或空值表示主域名
+            fullRecordName = domainName;
+        } else {
+            // 拼接子域名
+            fullRecordName = `${recordNameInput}.${domainName}`;
+        }
+
         const formData = {
-            name: document.getElementById('addRecordName').value,
+            name: fullRecordName,
             type: parseInt(document.getElementById('addRecordType').value),
             value: document.getElementById('addRecordValue').value,
             ttl: parseInt(document.getElementById('addRecordTtl').value),
@@ -978,6 +1006,11 @@ class DNSManager {
         } catch (error) {
             // 在添加模态框中显示错误信息
             this.showAddRecordError('添加解析记录失败: ' + error.message);
+        } finally {
+            // 隐藏加载动画
+            if (submitButton) {
+                this.hideLoadingSpinner(submitButton);
+            }
         }
     }
 
@@ -1211,8 +1244,60 @@ class DNSManager {
         }, 3000);
     }
 
+    showLoadingSpinner(button, text = '处理中...') {
+        // 保存原始按钮状态
+        button.dataset.originalText = button.textContent;
+        button.dataset.originalDisabled = button.disabled;
+        
+        // 设置加载状态
+        button.disabled = true;
+        button.innerHTML = `
+            <span style="display: inline-block; width: 16px; height: 16px; margin-right: 8px;">
+                <svg style="animation: spin 1s linear infinite; width: 16px; height: 16px;" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"/>
+                    <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"/>
+                </svg>
+            </span>
+            ${text}
+        `;
+    }
+
+    hideLoadingSpinner(button) {
+        // 恢复原始按钮状态
+        if (button.dataset.originalText) {
+            button.textContent = button.dataset.originalText;
+            button.disabled = button.dataset.originalDisabled === 'true';
+            delete button.dataset.originalText;
+            delete button.dataset.originalDisabled;
+        }
+    }
+
+    // 通用API调用函数，自动处理加载动画
+    async apiCall(url, options = {}, buttonElement = null, loadingText = '处理中...') {
+        // 显示加载动画
+        if (buttonElement) {
+            this.showLoadingSpinner(buttonElement, loadingText);
+        }
+
+        try {
+            const response = await fetch(url, options);
+            return response;
+        } finally {
+            // 隐藏加载动画
+            if (buttonElement) {
+                this.hideLoadingSpinner(buttonElement);
+            }
+        }
+    }
+
     async handleEditDNSRecord(e, recordId) {
         e.preventDefault();
+
+        // 获取提交按钮并显示加载动画
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        if (submitButton) {
+            this.showLoadingSpinner(submitButton, '更新中...');
+        }
 
         const formData = {
             name: document.getElementById('editRecordName').value,
@@ -1259,12 +1344,22 @@ class DNSManager {
         } catch (error) {
             // 在编辑模态框中显示错误信息
             this.showEditRecordError('更新失败: ' + error.message);
+        } finally {
+            // 隐藏加载动画
+            if (submitButton) {
+                this.hideLoadingSpinner(submitButton);
+            }
         }
     }
 
-    async deleteDNSRecord(recordId) {
+    async deleteDNSRecord(recordId, buttonElement = null) {
         if (!confirm('确定要删除这条解析记录吗？')) {
             return;
+        }
+
+        // 显示加载动画
+        if (buttonElement) {
+            this.showLoadingSpinner(buttonElement, '删除中...');
         }
 
         try {
@@ -1299,18 +1394,23 @@ class DNSManager {
         } catch (error) {
             // 在解析记录弹窗中显示错误信息
             this.showRecordsModalError('删除失败: ' + error.message);
+        } finally {
+            // 隐藏加载动画
+            if (buttonElement) {
+                this.hideLoadingSpinner(buttonElement);
+            }
         }
     }
 
-    async deleteDomain(domainId) {
+    async deleteDomain(domainId, buttonElement = null) {
         if (!confirm('确定要删除这个域名吗？这将同时删除所有相关的DNS记录。')) {
             return;
         }
 
         try {
-            const response = await fetch(`/api/domains/${domainId}`, {
+            const response = await this.apiCall(`/api/domains/${domainId}`, {
                 method: 'DELETE'
-            });
+            }, buttonElement, '删除中...');
 
             if (response.ok) {
                 this.showAlert('domains-alert', '域名删除成功', 'success');
