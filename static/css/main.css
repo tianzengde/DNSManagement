@@ -136,6 +136,9 @@ body {
     transition: all 0.3s ease;
     text-decoration: none;
     text-align: center;
+    margin: 0.25rem;
+    white-space: nowrap;
+    min-width: auto;
 }
 
 .btn-primary {
@@ -532,6 +535,14 @@ input:checked + .slider:before {
         padding: 8px 4px;
         word-break: break-word;
     }
+    
+    /* 大屏幕按钮样式 */
+    .btn {
+        font-size: 0.85rem !important;
+        padding: 0.6rem 1.2rem !important;
+        margin: 0.2rem !important;
+        gap: 0.4rem !important;
+    }
 }
 
 @media (max-width: 768px) {
@@ -561,6 +572,15 @@ input:checked + .slider:before {
         flex-wrap: wrap !important;
         gap: 4px !important;
     }
+    
+    /* 中等屏幕按钮样式 */
+    .btn {
+        font-size: 12px !important;
+        padding: 6px 12px !important;
+        margin: 0.2rem !important;
+        gap: 0.3rem !important;
+    }
+}
     
     /* 开关样式在小屏幕上的优化 */
     .switch {
@@ -608,14 +628,16 @@ input:checked + .slider:before {
     /* 超小屏幕时稍微缩小按钮 */
     .btn {
         font-size: 11px !important;
-        padding: 4px 8px !important;
-        min-width: 50px !important;
+        padding: 6px 10px !important;
+        margin: 0.15rem !important;
+        gap: 0.25rem !important;
     }
     
     .btn-sm {
         font-size: 11px !important;
-        padding: 4px 8px !important;
-        min-width: 50px !important;
+        padding: 6px 10px !important;
+        margin: 0.15rem !important;
+        gap: 0.25rem !important;
     }
     
     /* 开关样式在超小屏幕上的进一步优化 */

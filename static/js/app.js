@@ -118,21 +118,19 @@ class DNSManager {
                 </td>
                 <td style="text-align: center; vertical-align: middle;"><span class="status ${statusClass}" style="display: inline-block; white-space: nowrap;">${statusText}</span></td>
                 <td style="text-align: center; vertical-align: middle;">${lastTest}</td>
-                <td style="text-align: center; vertical-align: middle;">
-                    <div style="display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap;">
-                        <button class="btn btn-primary" onclick="app.testProvider(${provider.id}, this)" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
+                <td style="text-align: center;">
+                    <button class="btn btn-primary" onclick="app.testProvider(${provider.id}, this)">
                         🔍 测试
                     </button>
-                        <button class="btn btn-success" onclick="app.syncProvider(${provider.id}, this)" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
+                    <button class="btn btn-success" onclick="app.syncProvider(${provider.id}, this)">
                         🔄 同步
                     </button>
-                        <button class="btn btn-secondary" onclick="app.editProvider(${provider.id})" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
+                    <button class="btn btn-secondary" onclick="app.editProvider(${provider.id})">
                         ✏️ 编辑
                     </button>
-                        <button class="btn btn-danger" onclick="app.deleteProvider(${provider.id}, this)" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">
+                    <button class="btn btn-danger" onclick="app.deleteProvider(${provider.id}, this)">
                         🗑️ 删除
                     </button>
-                    </div>
                 </td>
             `;
             tbody.appendChild(row);
@@ -247,11 +245,13 @@ class DNSManager {
                 <td style="text-align: center; vertical-align: middle;"><span class="status ${statusClass}" style="display: inline-block; white-space: nowrap;">${statusText}</span></td>
                 <td style="text-align: center; vertical-align: middle;">${autoUpdateText}</td>
                 <td style="text-align: center; vertical-align: middle;">${new Date(domain.created_at).toLocaleDateString()}</td>
-                <td style="text-align: center; vertical-align: middle;">
-                    <div style="display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap;">
-                        <button class="btn btn-sm btn-primary" onclick="app.viewDomainRecords(${domain.id}, '${domain.name}')" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">解析</button>
-                        <button class="btn btn-sm btn-danger" onclick="app.deleteDomain(${domain.id}, this)" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">删除</button>
-                    </div>
+                <td style="text-align: center;">
+                    <button class="btn btn-primary" onclick="app.viewDomainRecords(${domain.id}, '${domain.name}')">
+                        🔍 解析
+                    </button>
+                    <button class="btn btn-danger" onclick="app.deleteDomain(${domain.id}, this)">
+                        🗑️ 删除
+                    </button>
                 </td>
             `;
             tbody.appendChild(row);
@@ -566,10 +566,12 @@ class DNSManager {
                          <td style="padding: 12px 8px; vertical-align: middle; text-align: center; width: 10%;">${record.ttl}</td>
                          <td style="padding: 12px 8px; vertical-align: middle; text-align: center; width: 10%;"><span class="status ${statusClass}" style="display: inline-block; white-space: nowrap;">${statusText}</span></td>
                          <td style="padding: 12px 8px; vertical-align: middle; text-align: center; width: 15%;">
-                             <div style="display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap;">
-                                 <button class="btn btn-sm btn-secondary" onclick="app.editDNSRecord(${record.id})" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">编辑</button>
-                                 <button class="btn btn-sm btn-danger" onclick="app.deleteDNSRecord(${record.id}, this)" style="font-size: 12px; padding: 6px 12px; min-width: 60px;">删除</button>
-                             </div>
+                             <button class="btn btn-secondary" onclick="app.editDNSRecord(${record.id})">
+                                 ✏️ 编辑
+                             </button>
+                             <button class="btn btn-danger" onclick="app.deleteDNSRecord(${record.id}, this)">
+                                 🗑️ 删除
+                             </button>
                          </td>
                      </tr>
                 `;
@@ -706,10 +708,11 @@ class DNSManager {
                                        value="${search}"
                                        style="padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; width: 200px;"
                                        onkeyup="app.searchDNSRecords('${domainId}', '${domainName}')">
-                                <button class="btn btn-secondary" onclick="app.clearDNSRecordSearch('${domainId}', '${domainName}')" 
-                                        style="font-size: 12px; padding: 6px 12px;">清除</button>
+                                <button class="btn btn-secondary" onclick="app.clearDNSRecordSearch('${domainId}', '${domainName}')">
+                                    清除
+                                </button>
                             </div>
-                            <button class="btn btn-primary" onclick="app.showAddDNSRecordModal(${domainId}, '${domainName}')" style="font-size: 12px; padding: 6px 12px;">
+                            <button class="btn btn-primary" onclick="app.showAddDNSRecordModal(${domainId}, '${domainName}')">
                                 ➕ 添加解析记录
                             </button>
                             <span class="close" onclick="app.closeDomainRecordsModal()">&times;</span>
