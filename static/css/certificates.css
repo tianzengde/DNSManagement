@@ -1,0 +1,59 @@
+/* 证书管理页面专用样式 */
+
+/* 证书表格样式优化 */
+.certificates-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.certificates-table th,
+.certificates-table td {
+    padding: 1rem;
+    text-align: center !important;
+    border-bottom: 1px solid #eee;
+}
+
+.certificates-table th {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%) !important;
+    color: white !important;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center !important;
+}
+
+.certificates-table tr:hover {
+    background: rgba(116, 185, 255, 0.05);
+}
+
+.certificates-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* 按钮组样式 - 使用默认尺寸 */
+.certificates-table td .btn {
+    margin: 0 0.125rem;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+    .certificates-table {
+        font-size: 0.8rem;
+    }
+    
+    .certificates-table th,
+    .certificates-table td {
+        padding: 0.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .certificates-table {
+        font-size: 11px;
+    }
+    
+    .certificates-table th,
+    .certificates-table td {
+        padding: 4px 2px;
+        font-size: 11px;
+    }
+}

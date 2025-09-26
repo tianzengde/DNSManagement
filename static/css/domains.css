@@ -1,0 +1,167 @@
+/* 域名管理页面专用样式 */
+
+/* 域名表格样式优化 */
+.domains-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.domains-table th,
+.domains-table td {
+    padding: 1rem;
+    text-align: center !important;
+    border-bottom: 1px solid #eee;
+}
+
+.domains-table th {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%) !important;
+    color: white !important;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-align: center !important;
+}
+
+.domains-table tr:hover {
+    background: rgba(116, 185, 255, 0.05);
+}
+
+.domains-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* 按钮组样式 - 使用默认尺寸 */
+.domains-table td .btn {
+    margin: 0 0.125rem;
+}
+
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+    .domains-table {
+        font-size: 0.8rem;
+    }
+    
+    .domains-table th,
+    .domains-table td {
+        padding: 0.5rem;
+    }
+    
+    /* 模态框响应式优化 */
+    #domainRecordsModal .modal-content {
+        max-width: 95vw;
+        margin: 2vh auto;
+    }
+    
+    #domainRecordsModal .modal-header {
+        padding: 1rem;
+    }
+    
+    #domainRecordsModal .modal-header h3 {
+        font-size: 1.1rem;
+    }
+    
+    #domainRecordsModal .modal-header > div {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+    
+    #domainRecordsModal #dnsRecordSearch {
+        width: 100%;
+    }
+    
+    .fixed-table thead th {
+        font-size: 10px;
+        padding: 10px 6px;
+    }
+    
+    .fixed-table tbody td {
+        font-size: 12px;
+        padding: 10px 6px;
+    }
+    
+    .fixed-table .btn {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+    
+    /* 添加和编辑模态框响应式 */
+    #addDNSRecordModal .modal-content,
+    #editDNSRecordModal .modal-content {
+        max-width: 95vw;
+        margin: 2vh auto;
+    }
+    
+    #addDNSRecordModal .modal-body,
+    #editDNSRecordModal .modal-body {
+        padding: 1rem;
+    }
+    
+    #addDNSRecordForm .form-group input,
+    #addDNSRecordForm .form-group select,
+    #addDNSRecordForm .form-group textarea,
+    #editDNSRecordForm .form-group input,
+    #editDNSRecordForm .form-group select,
+    #editDNSRecordForm .form-group textarea {
+        padding: 10px 12px;
+        font-size: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .domains-table {
+        font-size: 11px;
+    }
+    
+    .domains-table th,
+    .domains-table td {
+        padding: 4px 2px;
+        font-size: 11px;
+    }
+    
+    /* 超小屏幕优化 */
+    #domainRecordsModal .modal-content {
+        max-width: 98vw;
+        max-height: 95vh;
+        margin: 1vh auto;
+    }
+    
+    #domainRecordsModal .modal-header {
+        padding: 0.75rem;
+    }
+    
+    #domainRecordsModal .modal-header h3 {
+        font-size: 1rem;
+    }
+    
+    .fixed-table thead th {
+        font-size: 9px;
+        padding: 8px 4px;
+    }
+    
+    .fixed-table tbody td {
+        font-size: 11px;
+        padding: 8px 4px;
+    }
+    
+    .fixed-table .btn {
+        font-size: 9px;
+        padding: 3px 6px;
+        margin: 0 1px;
+    }
+    
+    .pagination-buttons .btn {
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+    
+    /* 记录名称预览在小屏幕上的布局调整 */
+    #addDNSRecordForm .form-group div[style*="display: flex"] {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    #recordNamePreview {
+        text-align: center;
+    }
+}
