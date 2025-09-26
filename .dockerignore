@@ -19,6 +19,18 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+.hypothesis/
+
+# 空的__init__.py文件
+scripts/__init__.py
 
 # 虚拟环境
 .venv/
@@ -49,6 +61,7 @@ logs/
 # 证书文件（运行时生成）
 data/certificates/
 data/logs/
+data/db/
 
 # Git文件
 .git/
