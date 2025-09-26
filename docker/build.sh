@@ -16,6 +16,7 @@ NC='\033[0m' # No Color
 PROJECT_NAME="tian/dnsmanagement"
 DOCKERFILE_PATH="docker/Dockerfile"
 VERSION_FILE="docker/version.txt"
+VERSION_TEST_FILE="docker/version-test.txt"
 
 # 显示帮助信息
 show_help() {
@@ -28,6 +29,7 @@ show_help() {
     echo "  -v, --version VERSION   指定版本号 (例如: 1.0.0)"
     echo "  -a, --auto              自动递增版本号"
     echo "  -t, --tag TAG           指定标签 (默认: latest)"
+    echo "  --test                  构建测试版本镜像 (添加-test后缀)"
     echo "  -p, --push              构建后推送到仓库"
     echo "  -c, --clean             构建前清理旧镜像"
     echo "  -b, --base              使用基础镜像 (python:3.12-slim)"
@@ -37,7 +39,14 @@ show_help() {
     echo "示例:"
     echo "  $0 --auto --minimal     自动递增版本号，构建Alpine最小化镜像"
     echo "  $0 -v 1.2.3 -t stable   构建指定版本号的稳定版本"
+    echo "  $0 --auto --test        自动递增版本号，构建测试版本"
+    echo "  $0 -v 1.2.3 --test      构建指定版本号的测试版本"
     echo "  $0 --auto --push        自动递增版本号并推送到仓库"
+    echo ""
+    echo "版本管理:"
+    echo "  - 生产版本使用: docker/version.txt"
+    echo "  - 测试版本使用: docker/version-test.txt"
+    echo "  - 两个版本文件独立管理，互不影响"
 }
 
 # 日志函数
@@ -67,8 +76,9 @@ check_docker() {
 
 # 获取当前版本号
 get_current_version() {
-    if [ -f "$VERSION_FILE" ]; then
-        cat "$VERSION_FILE"
+    local version_file=$1
+    if [ -f "$version_file" ]; then
+        cat "$version_file"
     else
         echo "0.0.0"
     fi
@@ -76,7 +86,9 @@ get_current_version() {
 
 # 保存版本号
 save_version() {
-    echo "$1" > "$VERSION_FILE"
+    local version=$1
+    local version_file=$2
+    echo "$version" > "$version_file"
 }
 
 # 递增版本号
@@ -127,6 +139,13 @@ build_image() {
     log_info "版本: $version"
     log_info "标签: $tag"
     log_info "基础镜像: $base_image"
+    
+    # 检查是否为测试版本
+    if [[ "$version" == *"-test" ]] || [[ "$tag" == *"-test" ]]; then
+        log_info "构建类型: 测试版本"
+    else
+        log_info "构建类型: 生产版本"
+    fi
     
     # 构建命令
     local build_cmd="docker build"
@@ -182,6 +201,7 @@ main() {
     local clean=false
     local base_image="python:3.12-alpine"
     local no_cache=false
+    local test_mode=false
     
     # 解析命令行参数
     while [[ $# -gt 0 ]]; do
@@ -222,6 +242,10 @@ main() {
                 no_cache=true
                 shift
                 ;;
+            --test)
+                test_mode=true
+                shift
+                ;;
             *)
                 log_error "未知选项: $1"
                 show_help
@@ -233,26 +257,50 @@ main() {
     # 检查Docker
     check_docker
     
+    # 根据测试模式选择版本文件
+    local version_file
+    if [ "$test_mode" = true ]; then
+        version_file="$VERSION_TEST_FILE"
+        log_info "使用测试版本文件: $version_file"
+    else
+        version_file="$VERSION_FILE"
+        log_info "使用生产版本文件: $version_file"
+    fi
+    
     # 处理版本号
     if [ "$auto_increment" = true ]; then
-        local current_version=$(get_current_version)
+        local current_version=$(get_current_version "$version_file")
         version=$(increment_version $current_version)
         log_info "自动递增版本号: $current_version -> $version"
-        save_version "$version"
+        save_version "$version" "$version_file"
     elif [ -z "$version" ]; then
-        version=$(get_current_version)
+        version=$(get_current_version "$version_file")
         log_info "使用当前版本号: $version"
     else
-        if ! validate_version "$version"; then
-            log_error "版本号格式错误: $version (应为 x.y.z 格式)"
+        # 保存原始版本号（不包含test后缀）
+        local original_version="$version"
+        if ! validate_version "$original_version"; then
+            log_error "版本号格式错误: $original_version (应为 x.y.z 格式)"
             exit 1
         fi
-        save_version "$version"
+        save_version "$original_version" "$version_file"
+    fi
+    
+    # 如果是测试模式，添加测试标识
+    if [ "$test_mode" = true ]; then
+        version="${version}-test"
+        log_info "测试模式: 版本号添加-test后缀 -> $version"
     fi
     
     # 清理旧镜像
     if [ "$clean" = true ]; then
         clean_images
+    fi
+    
+    # 如果是测试模式，修改标签
+    if [ "$test_mode" = true ]; then
+        tag="${tag}-test"
+        log_info "测试模式: 标签添加-test后缀 -> $tag"
     fi
     
     # 构建镜像
@@ -263,7 +311,12 @@ main() {
         push_image "$version" "$tag"
     fi
     
-    log_success "构建完成! 版本: $version, 标签: $tag"
+    # 显示构建完成信息
+    if [ "$test_mode" = true ]; then
+        log_success "测试版本构建完成! 版本: $version, 标签: $tag"
+    else
+        log_success "生产版本构建完成! 版本: $version, 标签: $tag"
+    fi
 }
 
 # 运行主函数
