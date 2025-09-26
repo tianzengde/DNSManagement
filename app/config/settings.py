@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     
     # 日志配置
     log_level: str = "INFO"
-    log_file: str = "logs/app.log"
+    log_file: str = "data/logs/app.log"
     
     # 数据库配置
     database_url: str = "sqlite://./data/dns_management.db"
@@ -33,7 +33,7 @@ class Settings(BaseSettings):
         super().__init__(**kwargs)
         # 创建必要的目录
         Path("data").mkdir(exist_ok=True)
-        Path("logs").mkdir(exist_ok=True)
+        Path("data/logs").mkdir(exist_ok=True)
     
     class Config:
         env_file = ".env"

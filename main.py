@@ -1,5 +1,6 @@
 """主应用入口"""
 import logging
+from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse
@@ -10,6 +11,10 @@ from app.api import providers, domains, certificates
 from app.services.scheduler_service import scheduler_service
 
 # 配置日志
+# 确保日志目录存在
+log_path = Path(settings.log_file)
+log_path.parent.mkdir(parents=True, exist_ok=True)
+
 logging.basicConfig(
     level=getattr(logging, settings.log_level),
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
