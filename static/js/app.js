@@ -112,7 +112,6 @@ class DNSManager {
                 new Date(provider.last_test_at).toLocaleString() : '未测试';
 
             row.innerHTML = `
-                <td style="text-align: center; vertical-align: middle;">${provider.id}</td>
                 <td style="text-align: center; vertical-align: middle;">${provider.name}</td>
                 <td style="text-align: center; vertical-align: middle;">${provider.type === 1 ? '华为云' : '阿里云'}</td>
                 <td style="text-align: center; vertical-align: middle;">
