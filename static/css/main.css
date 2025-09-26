@@ -456,6 +456,36 @@ input:checked + .slider:before {
     border: 1px solid rgba(225, 112, 85, 0.3);
 }
 
+/* 汉堡菜单样式 */
+.hamburger-menu {
+    display: none;
+    position: fixed;
+    top: 1rem;
+    left: 1rem;
+    z-index: 1002;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 8px;
+    padding: 0.75rem;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(10px);
+}
+
+.hamburger-menu span {
+    display: block;
+    width: 25px;
+    height: 3px;
+    background: #2c3e50;
+    margin: 5px 0;
+    transition: 0.3s;
+    border-radius: 2px;
+}
+
+.hamburger-menu:hover {
+    background: rgba(255, 255, 255, 1);
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
     .sidebar {
@@ -464,6 +494,10 @@ input:checked + .slider:before {
     
     .sidebar.open {
         transform: translateX(0);
+    }
+    
+    .hamburger-menu {
+        display: block;
     }
     
     .main-content {
@@ -561,6 +595,14 @@ input:checked + .slider:before {
         transform: translateX(-100%);
     }
     
+    .sidebar.open {
+        transform: translateX(0);
+    }
+    
+    .hamburger-menu {
+        display: block;
+    }
+    
     .main-content {
         margin-left: 0;
         padding: 1rem;
@@ -591,7 +633,6 @@ input:checked + .slider:before {
         margin: 0.2rem !important;
         gap: 0.3rem !important;
     }
-}
     
     /* 开关样式在小屏幕上的优化 */
     .switch {

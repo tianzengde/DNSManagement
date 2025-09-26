@@ -7,6 +7,13 @@
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
 <body>
+    <!-- 汉堡菜单按钮 -->
+    <button class="hamburger-menu" onclick="toggleSidebar()">
+        <span></span>
+        <span></span>
+        <span></span>
+    </button>
+
     <!-- 主内容区域 -->
     <div class="main-content">
         <!-- 内容主体 -->
@@ -67,6 +74,14 @@
                 return false;
             }
             return true;
+        }
+        
+        // 切换侧边栏显示/隐藏
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('open');
+            }
         }
         
         // 初始化应用
