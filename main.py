@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import init_database, close_database
-from app.api import providers, domains, certificates
+from app.api import providers, domains, certificates, auth
 from app.services.scheduler_service import scheduler_service
 
 # 配置日志
@@ -33,6 +33,9 @@ async def lifespan(app: FastAPI):
     # 启动时执行
     logger.info("正在启动应用...")
     await init_database()
+    
+    # 初始化默认用户
+    await auth.init_default_user()
     
     # 启动定时任务调度器
     scheduler_service.start()
@@ -62,6 +65,7 @@ app = FastAPI(
 )
 
 # 注册API路由
+app.include_router(auth.router)
 app.include_router(providers.router)
 app.include_router(domains.router)
 app.include_router(certificates.router)
@@ -72,29 +76,45 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """首页 - 重定向到管理界面"""
-    with open("static/index.html", "r", encoding="utf-8") as f:
+    """首页 - 重定向到服务商管理页面"""
+    with open("static/providers.html", "r", encoding="utf-8") as f:
         return f.read()
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page():
+    """登录页面"""
+    with open("static/login.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/dashboard", response_class=HTMLResponse)
+async def dashboard_page():
+    """仪表板页面"""
+    with open("static/dashboard.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
 
 
 @app.get("/providers", response_class=HTMLResponse)
 async def providers_page():
     """服务商管理页面"""
-    with open("static/index.html", "r", encoding="utf-8") as f:
+    with open("static/providers.html", "r", encoding="utf-8") as f:
         return f.read()
 
 
 @app.get("/domains", response_class=HTMLResponse)
 async def domains_page():
     """域名管理页面"""
-    with open("static/index.html", "r", encoding="utf-8") as f:
+    with open("static/domains.html", "r", encoding="utf-8") as f:
         return f.read()
 
 
 @app.get("/certificates", response_class=HTMLResponse)
 async def certificates_page():
     """证书管理页面"""
-    with open("static/index.html", "r", encoding="utf-8") as f:
+    with open("static/certificates.html", "r", encoding="utf-8") as f:
         return f.read()
 
 

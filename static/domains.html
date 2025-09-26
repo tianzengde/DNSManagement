@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS域名管理系统 - 域名管理</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+    <!-- 主内容区域 -->
+    <div class="main-content">
+        <!-- 内容主体 -->
+        <div class="content-body">
+            <!-- 域名管理区域 -->
+            <div id="domains" class="section active">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>🌐 域名管理</h3>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                            <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                                <select id="providerSelect" onchange="app.loadProviderDomains()" 
+                                        style="padding: 0.75rem 1rem; border-radius: 8px; border: 2px solid rgba(116, 185, 255, 0.2); background: rgba(255, 255, 255, 0.9); min-width: 200px;">
+                                    <option value="">🔍 选择服务商查看域名</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="domains-alert"></div>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align: center;">域名</th>
+                                        <th style="text-align: center;">服务商</th>
+                                        <th style="text-align: center;">状态</th>
+                                        <th style="text-align: center;">自动更新</th>
+                                        <th style="text-align: center;">创建时间</th>
+                                        <th style="text-align: center;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="domains-table">
+                                    <!-- 动态填充 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框容器 -->
+    <div id="modalContainer"></div>
+
+    <!-- JavaScript文件 -->
+    <script src="/static/js/components/sidebar.js"></script>
+    <script src="/static/js/components/modal.js"></script>
+    <script src="/static/js/app.js"></script>
+
+    <script>
+        // 检查认证状态
+        function checkAuth() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+                return false;
+            }
+            return true;
+        }
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkAuth()) return;
+            
+            // 先初始化主应用
+            app = new DNSManager();
+            window.app = app; // 确保全局可访问
+            
+            // 然后创建侧边栏
+            const sidebar = new Sidebar();
+            
+            // 延迟设置域名管理为当前活跃页面
+            setTimeout(() => {
+                const domainsNavItem = document.querySelector('[href="/domains"]');
+                if (domainsNavItem) {
+                    // 清除其他活跃状态
+                    document.querySelectorAll('.nav-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    // 设置当前页面为活跃
+                    domainsNavItem.classList.add('active');
+                }
+            }, 100);
+            
+            // 加载域名管理数据
+            app.showSection('domains');
+        });
+    </script>
+</body>
+</html>

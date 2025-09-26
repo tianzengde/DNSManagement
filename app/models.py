@@ -112,6 +112,19 @@ class Certificate(Model):
         table = "certificates"
 
 
+class User(Model):
+    """用户模型"""
+    id = fields.IntField(pk=True)
+    username = fields.CharField(max_length=50, unique=True, description="用户名")
+    password_hash = fields.CharField(max_length=255, description="密码哈希")
+    is_active = fields.BooleanField(default=True, description="是否激活")
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+    
+    class Meta:
+        table = "users"
+
+
 class TaskLog(Model):
     """任务日志模型"""
     id = fields.IntField(pk=True)

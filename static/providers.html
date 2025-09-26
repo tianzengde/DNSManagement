@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS域名管理系统 - 服务商管理</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+    <!-- 主内容区域 -->
+    <div class="main-content">
+        <!-- 内容主体 -->
+        <div class="content-body">
+            <!-- 服务商管理区域 -->
+            <div id="providers" class="section active">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>🔧 服务商管理</h3>
+                    </div>
+                    <div class="card-body">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                            <div style="display: flex; gap: 1rem;">
+                                <button class="btn btn-secondary" onclick="app.syncAllProviders(this)">
+                                    🔄 同步所有域名
+                                </button>
+                                <button class="btn btn-info" onclick="app.showSyncStatus()">
+                                    📊 同步状态
+                                </button>
+                            </div>
+                            <button class="btn btn-primary" onclick="app.showProviderModal()">
+                                ➕ 添加服务商
+                            </button>
+                        </div>
+                        <div id="providers-alert"></div>
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th style="text-align: center;">名称</th>
+                                        <th style="text-align: center;">类型</th>
+                                        <th style="text-align: center;">启用</th>
+                                        <th style="text-align: center;">连接状态</th>
+                                        <th style="text-align: center;">最后测试</th>
+                                        <th style="text-align: center;">操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="providers-table">
+                                    <!-- 动态填充 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框容器 -->
+    <div id="modalContainer"></div>
+
+    <!-- JavaScript文件 -->
+    <script src="/static/js/components/sidebar.js"></script>
+    <script src="/static/js/components/modal.js"></script>
+    <script src="/static/js/app.js"></script>
+
+    <script>
+        // 检查认证状态
+        function checkAuth() {
+            const token = localStorage.getItem('access_token');
+            if (!token) {
+                window.location.href = '/login';
+                return false;
+            }
+            return true;
+        }
+        
+        // 初始化应用
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkAuth()) return;
+            
+            // 先初始化主应用
+            app = new DNSManager();
+            window.app = app; // 确保全局可访问
+            
+            // 然后创建侧边栏
+            const sidebar = new Sidebar();
+            
+            // 延迟设置服务商管理为当前活跃页面
+            setTimeout(() => {
+                // 检查当前URL路径
+                const currentPath = window.location.pathname;
+                const providersNavItem = document.querySelector('[href="/providers"]');
+                
+                if (providersNavItem && (currentPath === '/' || currentPath === '/providers')) {
+                    // 清除其他活跃状态
+                    document.querySelectorAll('.nav-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    // 设置当前页面为活跃
+                    providersNavItem.classList.add('active');
+                }
+            }, 100);
+            
+            // 加载服务商管理数据
+            app.showSection('providers');
+        });
+    </script>
+</body>
+</html>

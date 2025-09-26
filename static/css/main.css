@@ -185,6 +185,17 @@ body {
     box-shadow: 0 8px 25px rgba(162, 155, 254, 0.6);
 }
 
+.btn-info {
+    background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
+    color: white;
+    box-shadow: 0 4px 15px rgba(116, 185, 255, 0.4);
+}
+
+.btn-info:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(116, 185, 255, 0.6);
+}
+
 /* 表格样式 */
 .table-container {
     background: white;

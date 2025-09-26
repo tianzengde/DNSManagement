@@ -185,3 +185,45 @@ class CertificateRenewResponse(BaseModel):
     success: bool
     message: str
     renewed_at: Optional[datetime] = None
+
+
+# 用户认证相关模型
+class UserLogin(BaseModel):
+    """用户登录模型"""
+    username: str = Field(..., description="用户名")
+    password: str = Field(..., description="密码")
+
+
+class UserPasswordChange(BaseModel):
+    """用户密码修改模型"""
+    old_password: str = Field(..., description="旧密码")
+    new_password: str = Field(..., min_length=6, description="新密码")
+
+
+class UserResponse(BaseModel):
+    """用户响应模型"""
+    id: int
+    username: str
+    is_active: bool
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class LoginResponse(BaseModel):
+    """登录响应模型"""
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse
+
+
+class DashboardStats(BaseModel):
+    """首页统计模型"""
+    total_providers: int = Field(..., description="总服务商数")
+    enabled_providers: int = Field(..., description="启用的服务商数")
+    total_domains: int = Field(..., description="总域名数")
+    total_certificates: int = Field(..., description="总证书数")
+    valid_certificates: int = Field(..., description="有效证书数")
+    expiring_certificates: int = Field(..., description="即将过期证书数")

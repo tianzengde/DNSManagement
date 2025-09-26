@@ -11,6 +11,13 @@ class Sidebar {
     }
 
     createSidebar() {
+        // 检查是否已经存在侧边栏
+        const existingSidebar = document.querySelector('.sidebar');
+        if (existingSidebar) {
+            console.log('侧边栏已存在，移除旧的');
+            existingSidebar.remove();
+        }
+        
         const sidebar = document.createElement('div');
         sidebar.className = 'sidebar';
         sidebar.innerHTML = `
@@ -18,41 +25,64 @@ class Sidebar {
                 <h1>🌐 DNS管理</h1>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" data-section="providers">
+                <a href="/dashboard" class="nav-item">
+                    📊 系统概览
+                </a>
+                <a href="/providers" class="nav-item" data-section="providers">
                     🔧 服务商管理
                 </a>
-                <a href="#" class="nav-item" data-section="domains">
+                <a href="/domains" class="nav-item" data-section="domains">
                     🌐 域名管理
                 </a>
-                <a href="#" class="nav-item" data-section="certificates">
+                <a href="/certificates" class="nav-item" data-section="certificates">
                     🔒 证书管理
                 </a>
             </nav>
         `;
         document.body.insertBefore(sidebar, document.body.firstChild);
+        console.log('侧边栏创建完成');
     }
 
     bindEvents() {
-        // 使用事件委托来处理动态创建的导航项
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('nav-item') || e.target.closest('.nav-item')) {
-                e.preventDefault();
-                const navItem = e.target.classList.contains('nav-item') ? e.target : e.target.closest('.nav-item');
-                this.setActiveItem(navItem);
-                
-                // 触发主应用的section切换
-                if (window.app && typeof window.app.showSection === 'function') {
-                    window.app.showSection(navItem.dataset.section);
-                } else {
-                    // 延迟重试
-                    setTimeout(() => {
-                        if (window.app && typeof window.app.showSection === 'function') {
-                            window.app.showSection(navItem.dataset.section);
-                        }
-                    }, 100);
+        // 直接为侧边栏绑定事件
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+            console.log('为侧边栏绑定事件');
+            sidebar.addEventListener('click', (e) => {
+                console.log('侧边栏点击事件:', e.target);
+                if (e.target.classList.contains('nav-item') || e.target.closest('.nav-item')) {
+                    const navItem = e.target.classList.contains('nav-item') ? e.target : e.target.closest('.nav-item');
+                    console.log('点击的导航项:', navItem.textContent.trim(), navItem.href);
+                    
+                    // 设置活跃状态
+                    this.setActiveItem(navItem);
+                    
+                    // 检查是否有href属性（页面跳转）
+                    if (navItem.href && navItem.href !== '#') {
+                        console.log('执行页面跳转到:', navItem.href);
+                        // 允许页面跳转，不阻止默认行为
+                        return;
+                    }
+                    
+                    // 阻止默认行为（对于没有href的项）
+                    e.preventDefault();
+                    
+                    // 触发主应用的section切换
+                    if (window.app && typeof window.app.showSection === 'function') {
+                        window.app.showSection(navItem.dataset.section);
+                    } else {
+                        // 延迟重试
+                        setTimeout(() => {
+                            if (window.app && typeof window.app.showSection === 'function') {
+                                window.app.showSection(navItem.dataset.section);
+                            }
+                        }, 100);
+                    }
                 }
-            }
-        });
+            });
+        } else {
+            console.error('侧边栏元素未找到，无法绑定事件');
+        }
 
         // 移动端菜单切换
         this.createMobileToggle();
