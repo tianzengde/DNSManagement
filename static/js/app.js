@@ -37,10 +37,16 @@ class DNSManager {
             }
         });
 
-        // 表单提交
-        document.getElementById('providerForm')?.addEventListener('submit', (e) => {
-            this.handleProviderSubmit(e);
-        });
+        // 延迟绑定表单提交事件，确保模态框已创建
+        setTimeout(() => {
+            const providerForm = document.getElementById('providerForm');
+            if (providerForm && !providerForm.dataset.bound) {
+                providerForm.addEventListener('submit', (e) => {
+                    this.handleProviderSubmit(e);
+                });
+                providerForm.dataset.bound = 'true'; // 标记已绑定，防止重复绑定
+            }
+        }, 100);
 
     }
 
@@ -316,6 +322,16 @@ class DNSManager {
     async handleProviderSubmit(e) {
         e.preventDefault();
 
+        // 获取提交按钮并显示加载动画
+        const submitButton = e.target.querySelector('button[type="submit"]');
+        if (submitButton) {
+            // 防止重复提交
+            if (submitButton.disabled) {
+                return;
+            }
+            this.showLoadingSpinner(submitButton, '保存中...');
+        }
+
         const formData = {
             name: document.getElementById('providerName').value,
             type: parseInt(document.getElementById('providerType').value),
@@ -347,6 +363,11 @@ class DNSManager {
             }
         } catch (error) {
             this.showAlert('providers-alert', '保存失败: ' + error.message, 'error');
+        } finally {
+            // 隐藏加载动画
+            if (submitButton) {
+                this.hideLoadingSpinner(submitButton);
+            }
         }
     }
 

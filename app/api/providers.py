@@ -30,37 +30,60 @@ async def get_provider(provider_id: int):
 @atomic()
 async def create_provider(provider_data: ProviderCreate):
     """创建服务商"""
-    # 测试连接
-    if provider_data.type.value == 1:  # 华为云
-        provider_instance = HuaweiProvider(
-            provider_data.access_key,
-            provider_data.secret_key,
-            provider_data.region or ""
-        )
-    elif provider_data.type.value == 2:  # 阿里云
-        provider_instance = AliyunProvider(
-            provider_data.access_key,
-            provider_data.secret_key,
-            provider_data.region or ""
-        )
-    else:
-        raise HTTPException(status_code=400, detail="不支持的服务商类型")
-    
-    # 创建服务商（先保存数据）
+    # 先创建服务商记录（本地保存）
     provider = await Provider.create(**provider_data.dict())
     
-    # 测试连接（可选，不影响创建）
-    if not (provider_data.access_key.startswith("demo_") and provider_data.secret_key.startswith("demo_")):
+    # 如果启用状态为True，则进行连接测试并更新状态
+    if provider_data.enabled:
         try:
-            if await provider_instance.test_connection():
-                # 连接成功，保持启用状态
-                pass
+            # 创建服务商实例
+            if provider_data.type.value == 1:  # 华为云
+                provider_instance = HuaweiProvider(
+                    provider_data.access_key,
+                    provider_data.secret_key,
+                    provider_data.region or ""
+                )
+            elif provider_data.type.value == 2:  # 阿里云
+                provider_instance = AliyunProvider(
+                    provider_data.access_key,
+                    provider_data.secret_key,
+                    provider_data.region or ""
+                )
             else:
-                # 连接失败，但数据已保存
-                pass
+                # 不支持的服务商类型，设置为禁用状态
+                provider.enabled = False
+                provider.status = "error"
+                await provider.save()
+                return provider
+            
+            # 测试连接
+            if not (provider_data.access_key.startswith("demo_") and provider_data.secret_key.startswith("demo_")):
+                try:
+                    connection_success = await provider_instance.test_connection()
+                    if connection_success:
+                        provider.status = "connected"
+                    else:
+                        provider.status = "failed"
+                        provider.enabled = False  # 连接失败时禁用
+                except Exception as e:
+                    provider.status = "error"
+                    provider.enabled = False  # 连接异常时禁用
+            else:
+                # 演示模式，直接设置为连接成功
+                provider.status = "connected"
+            
+            # 更新最后测试时间
+            from datetime import datetime
+            provider.last_test_at = datetime.now()
+            await provider.save()
+            
         except Exception as e:
-            # 连接测试失败，但数据已保存，可以通过后续的测试连接功能来验证
-            pass
+            # 如果测试过程中出现异常，设置为错误状态并禁用
+            provider.status = "error"
+            provider.enabled = False
+            from datetime import datetime
+            provider.last_test_at = datetime.now()
+            await provider.save()
     
     return provider
 
