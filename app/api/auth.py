@@ -17,7 +17,7 @@ security = HTTPBearer()
 logger = logging.getLogger(__name__)
 
 # JWT配置
-SECRET_KEY = settings.secret_key
+SECRET_KEY = settings.jwt_secret_key
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 * 24 * 60  # 30天
 

@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     port: int = 8000
     
     # 安全配置
-    secret_key: str = "your-secret-key-here"
+    jwt_secret_key: str = "your-jwt-secret-key-here"
     
     # 定时任务配置
     scheduler_timezone: str = "Asia/Shanghai"
