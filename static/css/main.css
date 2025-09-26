@@ -196,6 +196,23 @@ body {
     box-shadow: 0 8px 25px rgba(116, 185, 255, 0.6);
 }
 
+/* 禁用按钮样式 */
+.btn.disabled,
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
+    background: #bdc3c7 !important;
+    color: #7f8c8d !important;
+}
+
+.btn.disabled:hover,
+.btn:disabled:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
 /* 表格样式 */
 .table-container {
     background: white;

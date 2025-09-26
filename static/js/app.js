@@ -1443,6 +1443,20 @@ class DNSManager {
         }
     }
 
+    canRenewCertificate(cert) {
+        // 检查证书是否在30天内过期
+        if (!cert.not_after) {
+            return false; // 没有过期时间信息，不允许续期
+        }
+        
+        const now = new Date();
+        const expiryDate = new Date(cert.not_after);
+        const daysUntilExpiry = Math.ceil((expiryDate - now) / (1000 * 60 * 60 * 24));
+        
+        // 只有在30天内过期且证书状态为有效时才允许续期
+        return daysUntilExpiry <= 30 && daysUntilExpiry > 0 && cert.status === 1;
+    }
+
     renderCertificates(certificates) {
         const tbody = document.getElementById('certificates-table');
         tbody.innerHTML = '';
@@ -1459,6 +1473,12 @@ class DNSManager {
             const typeText = this.getCertificateTypeText(cert.type);
             const notBefore = cert.not_before ? new Date(cert.not_before).toLocaleDateString() : '-';
             const notAfter = cert.not_after ? new Date(cert.not_after).toLocaleDateString() : '-';
+            
+            // 检查证书是否在30天内过期
+            const canRenew = this.canRenewCertificate(cert);
+            const renewButtonClass = canRenew ? 'btn btn-secondary' : 'btn btn-secondary disabled';
+            const renewButtonTitle = canRenew ? '续期证书' : '证书有效期超过30天，暂不可续期';
+            const renewButtonDisabled = canRenew ? '' : 'disabled';
 
             row.innerHTML = `
                 <td style="text-align: center;">${cert.name}</td>
@@ -1479,7 +1499,8 @@ class DNSManager {
                     <button class="btn btn-primary" onclick="app.checkCertificateStatus(${cert.id})">
                         🔍 检查
                     </button>
-                    <button class="btn btn-secondary" onclick="app.renewCertificate(${cert.id}, this)">
+                    <button class="${renewButtonClass}" onclick="app.renewCertificate(${cert.id}, this)" 
+                            title="${renewButtonTitle}" ${renewButtonDisabled}>
                         🔄 续期
                     </button>
                     <button class="btn btn-success" onclick="app.downloadCertificate(${cert.id})">
@@ -1565,6 +1586,12 @@ class DNSManager {
     }
 
     async renewCertificate(certificateId, buttonElement = null) {
+        // 检查按钮是否被禁用
+        if (buttonElement && buttonElement.disabled) {
+            this.showAlert('certificates-alert', '证书有效期超过30天，暂不可续期', 'warning');
+            return;
+        }
+
         if (!confirm('确定要续期这个证书吗？')) return;
 
         try {
