@@ -37,6 +37,9 @@ class Sidebar {
                 <a href="/certificates" class="nav-item" data-section="certificates">
                     🔒 证书管理
                 </a>
+                <a href="/ddns" class="nav-item" data-section="ddns">
+                    🔄 DDNS设置
+                </a>
             </nav>
         `;
         document.body.insertBefore(sidebar, document.body.firstChild);

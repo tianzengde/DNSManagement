@@ -7,7 +7,7 @@ from fastapi.responses import HTMLResponse
 from contextlib import asynccontextmanager
 from app.config import settings
 from app.database import init_database, close_database
-from app.api import providers, domains, certificates, auth
+from app.api import providers, domains, certificates, auth, ddns
 from app.services.scheduler_service import scheduler_service
 
 # 配置日志
@@ -69,6 +69,7 @@ app.include_router(auth.router)
 app.include_router(providers.router)
 app.include_router(domains.router)
 app.include_router(certificates.router)
+app.include_router(ddns.router)
 
 # 静态文件服务
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -115,6 +116,13 @@ async def domains_page():
 async def certificates_page():
     """证书管理页面"""
     with open("static/certificates.html", "r", encoding="utf-8") as f:
+        return f.read()
+
+
+@app.get("/ddns", response_class=HTMLResponse)
+async def ddns_page():
+    """DDNS设置页面"""
+    with open("static/ddns.html", "r", encoding="utf-8") as f:
         return f.read()
 
 

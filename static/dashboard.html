@@ -99,6 +99,11 @@
             color: #d63031;
         }
         
+        .stat-icon.ddns {
+            background: linear-gradient(135deg, #a29bfe 0%, #6c5ce7 100%);
+            color: white;
+        }
+        
         .stat-title {
             font-size: 1.1rem;
             color: #666;
@@ -338,6 +343,10 @@
                                     <span class="action-icon">🔒</span>
                                     <span class="action-text">证书管理</span>
                                 </a>
+                                <a href="/ddns" class="action-button" onclick="dashboard.navigateTo('/ddns')">
+                                    <span class="action-icon">🔄</span>
+                                    <span class="action-text">DDNS设置</span>
+                                </a>
                             </div>
                         </div>
                     </div>
@@ -481,6 +490,17 @@
                         </div>
                         <p class="stat-value">${stats.expiring_certificates}</p>
                         <p class="stat-description">30天内过期的证书</p>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-card-header">
+                            <div class="stat-icon ddns">🔄</div>
+                            <div>
+                                <h3 class="stat-title">DDNS配置</h3>
+                            </div>
+                        </div>
+                        <p class="stat-value">${stats.total_ddns_configs}</p>
+                        <p class="stat-description">活跃配置: ${stats.active_ddns_configs}</p>
                     </div>
                 `;
             }

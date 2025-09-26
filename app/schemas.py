@@ -219,6 +219,74 @@ class LoginResponse(BaseModel):
     user: UserResponse
 
 
+class DDNSConfigBase(BaseModel):
+    """DDNS配置基础模型"""
+    name: str = Field(..., description="DDNS配置名称")
+    domain_id: int = Field(..., description="关联域名ID")
+    subdomain: str = Field(..., description="子域名")
+    record_type: RecordType = Field(RecordType.A, description="记录类型")
+    enabled: bool = Field(True, description="是否启用")
+    update_interval: int = Field(300, description="更新间隔(秒)")
+    update_method: str = Field("auto", description="更新方式")
+
+
+class DDNSConfigCreate(DDNSConfigBase):
+    """创建DDNS配置模型"""
+    pass
+
+
+class DDNSConfigUpdate(BaseModel):
+    """更新DDNS配置模型"""
+    name: Optional[str] = None
+    subdomain: Optional[str] = None
+    record_type: Optional[RecordType] = None
+    enabled: Optional[bool] = None
+    update_interval: Optional[int] = None
+    update_method: Optional[str] = None
+
+
+class DDNSConfigResponse(DDNSConfigBase):
+    """DDNS配置响应模型"""
+    id: int
+    domain: DomainResponse
+    last_update_at: Optional[datetime] = None
+    last_ip: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class DDNSLogResponse(BaseModel):
+    """DDNS日志响应模型"""
+    id: int
+    ddns_config_id: int
+    old_ip: Optional[str] = None
+    new_ip: str
+    status: str
+    message: str
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+
+class DDNSUpdateRequest(BaseModel):
+    """DDNS更新请求模型"""
+    ddns_config_id: int = Field(..., description="DDNS配置ID")
+    force: bool = Field(False, description="是否强制更新")
+
+
+class DDNSUpdateResponse(BaseModel):
+    """DDNS更新响应模型"""
+    success: bool
+    message: str
+    old_ip: Optional[str] = None
+    new_ip: Optional[str] = None
+    updated_at: Optional[datetime] = None
+
+
 class DashboardStats(BaseModel):
     """首页统计模型"""
     total_providers: int = Field(..., description="总服务商数")
@@ -227,3 +295,5 @@ class DashboardStats(BaseModel):
     total_certificates: int = Field(..., description="总证书数")
     valid_certificates: int = Field(..., description="有效证书数")
     expiring_certificates: int = Field(..., description="即将过期证书数")
+    total_ddns_configs: int = Field(..., description="总DDNS配置数")
+    active_ddns_configs: int = Field(..., description="活跃DDNS配置数")

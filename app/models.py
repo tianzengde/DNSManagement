@@ -125,6 +125,39 @@ class User(Model):
         table = "users"
 
 
+class DDNSConfig(Model):
+    """DDNS配置模型"""
+    id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=100, description="DDNS配置名称")
+    domain = fields.ForeignKeyField('models.Domain', related_name='ddns_configs', description="关联域名")
+    subdomain = fields.CharField(max_length=100, description="子域名")
+    record_type = fields.IntEnumField(RecordType, default=RecordType.A, description="记录类型")
+    enabled = fields.BooleanField(default=True, description="是否启用")
+    update_interval = fields.IntField(default=300, description="更新间隔(秒)")
+    last_update_at = fields.DatetimeField(null=True, description="最后更新时间")
+    last_ip = fields.CharField(max_length=45, null=True, description="最后记录的IP")
+    update_method = fields.CharField(max_length=20, default="auto", description="更新方式: auto, manual")
+    created_at = fields.DatetimeField(auto_now_add=True)
+    updated_at = fields.DatetimeField(auto_now=True)
+    
+    class Meta:
+        table = "ddns_configs"
+
+
+class DDNSLog(Model):
+    """DDNS更新日志模型"""
+    id = fields.IntField(pk=True)
+    ddns_config = fields.ForeignKeyField('models.DDNSConfig', related_name='logs', description="DDNS配置")
+    old_ip = fields.CharField(max_length=45, null=True, description="旧IP")
+    new_ip = fields.CharField(max_length=45, description="新IP")
+    status = fields.CharField(max_length=20, description="更新状态: success, failed")
+    message = fields.TextField(description="日志消息")
+    created_at = fields.DatetimeField(auto_now_add=True)
+    
+    class Meta:
+        table = "ddns_logs"
+
+
 class TaskLog(Model):
     """任务日志模型"""
     id = fields.IntField(pk=True)

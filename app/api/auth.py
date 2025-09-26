@@ -149,7 +149,7 @@ async def change_password(
 @router.get("/dashboard", response_model=DashboardStats)
 async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
     """获取首页统计数据"""
-    from app.models import Provider, Domain, Certificate, CertificateStatus
+    from app.models import Provider, Domain, Certificate, CertificateStatus, DDNSConfig
     
     # 统计服务商
     total_providers = await Provider.all().count()
@@ -170,13 +170,19 @@ async def get_dashboard_stats(current_user: User = Depends(get_current_user)):
         not_after__lte=thirty_days_later
     ).count()
     
+    # 统计DDNS配置
+    total_ddns_configs = await DDNSConfig.all().count()
+    active_ddns_configs = await DDNSConfig.filter(enabled=True).count()
+    
     return DashboardStats(
         total_providers=total_providers,
         enabled_providers=enabled_providers,
         total_domains=total_domains,
         total_certificates=total_certificates,
         valid_certificates=valid_certificates,
-        expiring_certificates=expiring_certificates
+        expiring_certificates=expiring_certificates,
+        total_ddns_configs=total_ddns_configs,
+        active_ddns_configs=active_ddns_configs
     )
 
 
