@@ -604,9 +604,6 @@ input:checked + .slider:before {
     font-weight: 500;
 }
 
-@keyframes spin {
-    to { transform: rotate(360deg); }
-}
 
 /* 滚动条样式 */
 ::-webkit-scrollbar {
