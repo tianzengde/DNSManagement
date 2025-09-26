@@ -792,8 +792,12 @@ class DNSManager {
                         <form id="addDNSRecordForm">
                             <div class="form-group">
                                 <label for="addRecordName">记录名称</label>
-                                <input type="text" id="addRecordName" placeholder="如：www, mail, @ 等" required>
-                                <small class="form-text">完整域名: ${domainName}</small>
+                                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                    <input type="text" id="addRecordName" placeholder="如：www, mail, @ 等" required 
+                                           style="flex: 0 0 56%;" oninput="app.updateRecordNamePreview('${domainName}')">
+                                    <span id="recordNamePreview" style="color: #000; font-weight: 500; flex: 0 0 44%; padding-left: 0.5rem;"></span>
+                                </div>
+                                <small class="form-text">只需输入子域名前缀，完整域名将自动生成</small>
                             </div>
                             <div class="form-group">
                                 <label for="addRecordType">记录类型</label>
@@ -843,6 +847,9 @@ class DNSManager {
         
         // 初始化记录值提示
         this.updateRecordValuePlaceholder();
+        
+        // 初始化记录名称预览
+        this.updateRecordNamePreview(domainName);
     }
 
     closeAddDNSRecordModal() {
@@ -890,6 +897,18 @@ class DNSManager {
         }, 3000);
     }
 
+    updateRecordNamePreview(domainName) {
+        const recordNameInput = document.getElementById('addRecordName');
+        const recordNamePreview = document.getElementById('recordNamePreview');
+        
+        if (!recordNameInput || !recordNamePreview) return;
+        
+        const inputValue = recordNameInput.value.trim();
+        
+        // 始终显示主域名，与DDNS弹窗保持一致
+        recordNamePreview.textContent = `.${domainName}`;
+    }
+
     updateRecordValuePlaceholder() {
         const recordTypeSelect = document.getElementById('addRecordType');
         const recordValueTextarea = document.getElementById('addRecordValue');
@@ -913,13 +932,14 @@ class DNSManager {
                 placeholder = '邮件服务器域名，如：mail.example.com';
                 break;
             case 5: // TXT
-                placeholder = 'TXT记录值，如："v=spf1 include:_spf.google.com ~all"';
+                placeholder = 'TXT记录的内容应该在""内，如："v=spf1 include:_spf.google.com ~all"';
                 break;
             case 6: // NS
                 placeholder = '域名服务器，如：ns1.example.com';
                 break;
             default:
                 placeholder = '如：192.168.1.1, example.com 等';
+                break;
         }
         
         recordValueTextarea.placeholder = placeholder;
