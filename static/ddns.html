@@ -608,11 +608,11 @@
                             <table class="table">
                                 <thead>
                                     <tr>
-                                        <th>时间</th>
-                                        <th>旧IP</th>
-                                        <th>新IP</th>
-                                        <th>状态</th>
-                                        <th>消息</th>
+                                        <th style="text-align: center;">时间</th>
+                                        <th style="text-align: center;">旧IP</th>
+                                        <th style="text-align: center;">新IP</th>
+                                        <th style="text-align: center;">状态</th>
+                                        <th style="text-align: center;">消息</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -623,11 +623,11 @@
                         const statusText = log.status === 'success' ? '成功' : '失败';
                         logsHtml += `
                             <tr>
-                                <td>${new Date(log.created_at).toLocaleString()}</td>
-                                <td>${log.old_ip || '-'}</td>
-                                <td>${log.new_ip || '-'}</td>
-                                <td><span class="status ${statusClass}">${statusText}</span></td>
-                                <td>${log.message}</td>
+                                <td style="text-align: center; vertical-align: middle;">${new Date(log.created_at).toLocaleString()}</td>
+                                <td style="text-align: center; vertical-align: middle;">${log.old_ip || '-'}</td>
+                                <td style="text-align: center; vertical-align: middle;">${log.new_ip || '-'}</td>
+                                <td style="text-align: center; vertical-align: middle;"><span class="status ${statusClass}">${statusText}</span></td>
+                                <td style="text-align: center; vertical-align: middle;">${log.message}</td>
                             </tr>
                         `;
                     });
