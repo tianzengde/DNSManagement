@@ -78,18 +78,6 @@ async def create_ddns_config(config_data: DDNSConfigCreate):
     if not config_data.subdomain.endswith(f".{domain.name}") and config_data.subdomain != domain.name:
         raise HTTPException(status_code=400, detail=f"子域名必须属于域名 {domain.name}")
     
-    # 检查是否已存在相同的DDNS配置
-    existing_config = await DDNSConfig.get_or_none(
-        domain_id=config_data.domain_id,
-        subdomain=config_data.subdomain
-    )
-    if existing_config:
-        raise HTTPException(status_code=400, detail="该域名下已存在相同的DDNS配置")
-    
-    # 验证更新间隔
-    if config_data.update_interval < 60:
-        raise HTTPException(status_code=400, detail="更新间隔不能少于60秒")
-    
     # 检查DNS解析记录是否已存在
     existing_record = await DNSRecord.get_or_none(
         domain_id=config_data.domain_id,
@@ -99,6 +87,18 @@ async def create_ddns_config(config_data: DDNSConfigCreate):
     if existing_record:
         raise HTTPException(status_code=400, detail="该DNS解析记录已存在，请先删除现有记录")
     
+    # 检查是否已存在相同的DDNS配置
+    existing_ddns_config = await DDNSConfig.get_or_none(
+        domain_id=config_data.domain_id,
+        subdomain=config_data.subdomain
+    )
+    if existing_ddns_config:
+        raise HTTPException(status_code=400, detail="该子域名已存在DDNS配置，请先删除现有配置")
+    
+    # 验证更新间隔
+    if config_data.update_interval < 60:
+        raise HTTPException(status_code=400, detail="更新间隔不能少于60秒")
+    
     # 调用服务商API创建DNS记录
     try:
         # 获取服务商实例
@@ -106,16 +106,29 @@ async def create_ddns_config(config_data: DDNSConfigCreate):
         if not provider_instance:
             raise HTTPException(status_code=400, detail="服务商配置错误")
         
-        # 准备DNS记录数据
+        # 准备DNS记录数据（与手动添加记录保持一致）
         record_data = {
-            'name': config_data.subdomain,
-            'type': 'A' if config_data.record_type == 1 else 'AAAA',  # 转换为字符串类型
+            'name': config_data.subdomain,  # 使用完整域名，与手动添加一致
+            'type': 'A' if config_data.record_type == 1 else 'AAAA',
             'value': '127.0.0.1',  # 临时IP，DDNS会自动更新
             'ttl': 300
         }
         
         # 调用服务商API创建记录
-        await provider_instance.add_record(domain.name, record_data)
+        external_id = await provider_instance.add_record(domain.name, record_data)
+        if not external_id:
+            raise Exception("服务商API返回的记录ID为空")
+        
+        # 创建本地DNS记录
+        await DNSRecord.create(
+            domain_id=config_data.domain_id,
+            name=config_data.subdomain,
+            type=config_data.record_type,
+            value='127.0.0.1',
+            ttl=300,
+            external_id=external_id,
+            enabled=True
+        )
         
     except Exception as e:
         # 服务商API调用失败，回滚
