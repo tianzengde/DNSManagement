@@ -132,7 +132,7 @@ class HuaweiProvider(BaseProvider):
                 f"{self.base_url}{uri}",
                 params=query_params,
                 headers=headers,
-                timeout=60
+                timeout=10
             )
             response.raise_for_status()
             data = response.json()
@@ -177,7 +177,7 @@ class HuaweiProvider(BaseProvider):
                 f"{self.base_url}{uri}",
                 params=query_params,
                 headers=headers,
-                timeout=60
+                timeout=10
             )
             response.raise_for_status()
             data = response.json()
@@ -232,7 +232,7 @@ class HuaweiProvider(BaseProvider):
                 f"{self.base_url}{uri}",
                 data=body_str,
                 headers=headers,
-                timeout=60
+                timeout=10  # 减少超时时间避免阻塞
             )
             if response.status_code not in [201, 202]:
                 error_detail = response.text
@@ -283,7 +283,7 @@ class HuaweiProvider(BaseProvider):
                 f"{self.base_url}{uri}",
                 data=body_str,
                 headers=headers,
-                timeout=60
+                timeout=10
             )
             if response.status_code not in [200, 202]:
                 error_detail = response.text
@@ -315,7 +315,7 @@ class HuaweiProvider(BaseProvider):
             response = await client.delete(
                 f"{self.base_url}{uri}",
                 headers=headers,
-                timeout=60
+                timeout=10
             )
             response.raise_for_status()
             return True

@@ -18,15 +18,22 @@ router = APIRouter(prefix="/api/ddns", tags=["ddns"])
 logger = logging.getLogger(__name__)
 
 
-async def get_public_ip() -> str:
+async def get_public_ip(ip_version=4):
     """获取公网IP地址"""
-    ip_services = [
-        "https://api.ipify.org",
-        "https://ipv4.icanhazip.com",
-        "https://api.ip.sb/ip",
-        "https://ifconfig.me/ip",
-        "https://checkip.amazonaws.com"
-    ]
+    if ip_version == 4:
+        ip_services = [
+            "https://api.ipify.org",
+            "https://ipv4.icanhazip.com",
+            "https://api.ip.sb/ip",
+            "https://ifconfig.me/ip",
+            "https://checkip.amazonaws.com"
+        ]
+    else:  # IPv6
+        ip_services = [
+            "https://ipv6.icanhazip.com",
+            "https://api6.ipify.org",
+            "https://ifconfig.me/ip"
+        ]
     
     async with httpx.AsyncClient(timeout=5.0) as client:
         for service in ip_services:
@@ -34,15 +41,20 @@ async def get_public_ip() -> str:
                 response = await client.get(service)
                 if response.status_code == 200:
                     ip = response.text.strip()
-                    # 简单验证IP格式
-                    parts = ip.split('.')
-                    if len(parts) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in parts):
-                        return ip
+                    if ip_version == 4:
+                        # 验证IPv4格式
+                        parts = ip.split('.')
+                        if len(parts) == 4 and all(part.isdigit() and 0 <= int(part) <= 255 for part in parts):
+                            return ip
+                    else:
+                        # 简单验证IPv6格式（包含冒号）
+                        if ':' in ip:
+                            return ip
             except Exception as e:
                 logger.debug(f"获取IP失败 {service}: {e}")
                 continue
     
-    raise HTTPException(status_code=500, detail="无法获取公网IP地址")
+    return None  # 返回None而不是抛出异常，让调用者处理
 
 
 @router.get("/", response_model=List[DDNSConfigResponse])
@@ -62,7 +74,6 @@ async def get_ddns_config(config_id: int):
 
 
 @router.post("/", response_model=DDNSConfigResponse)
-@atomic()
 async def create_ddns_config(config_data: DDNSConfigCreate):
     """创建DDNS配置"""
     # 验证域名是否存在
@@ -99,45 +110,79 @@ async def create_ddns_config(config_data: DDNSConfigCreate):
     if config_data.update_interval < 60:
         raise HTTPException(status_code=400, detail="更新间隔不能少于60秒")
     
-    # 调用服务商API创建DNS记录
+    # 获取服务商实例
+    provider_instance = get_provider_instance(domain.provider)
+    if not provider_instance:
+        raise HTTPException(status_code=400, detail="服务商配置错误")
+    
+    # 获取当前公网IP（这是网络操作，不应该在事务中）
     try:
-        # 获取服务商实例
-        provider_instance = get_provider_instance(domain.provider)
-        if not provider_instance:
-            raise HTTPException(status_code=400, detail="服务商配置错误")
+        if config_data.record_type == 1:  # A记录
+            current_ip = await get_public_ip()
+        else:  # AAAA记录
+            current_ip = await get_public_ip(ip_version=6)
         
-        # 准备DNS记录数据（与手动添加记录保持一致）
-        record_data = {
-            'name': config_data.subdomain,  # 使用完整域名，与手动添加一致
-            'type': 'A' if config_data.record_type == 1 else 'AAAA',
-            'value': '127.0.0.1',  # 临时IP，DDNS会自动更新
-            'ttl': 300
-        }
-        
-        # 调用服务商API创建记录
+        if not current_ip:
+            raise HTTPException(status_code=400, detail="无法获取公网IP地址")
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"获取公网IP失败: {str(e)}")
+    
+    # 准备DNS记录数据
+    record_data = {
+        'name': config_data.subdomain,
+        'type': 'A' if config_data.record_type == 1 else 'AAAA',
+        'value': current_ip,
+        'ttl': 300
+    }
+    
+    # 调用服务商API创建记录（这是网络操作，不应该在事务中）
+    try:
         external_id = await provider_instance.add_record(domain.name, record_data)
         if not external_id:
-            raise Exception("服务商API返回的记录ID为空")
-        
-        # 创建本地DNS记录
-        await DNSRecord.create(
-            domain_id=config_data.domain_id,
-            name=config_data.subdomain,
-            type=config_data.record_type,
-            value='127.0.0.1',
-            ttl=300,
-            external_id=external_id,
-            enabled=True
-        )
-        
+            raise HTTPException(status_code=400, detail="服务商API返回的记录ID为空")
     except Exception as e:
-        # 服务商API调用失败，回滚
         raise HTTPException(status_code=400, detail=f"创建DNS记录失败: {str(e)}")
     
-    # 创建本地DDNS配置
-    config = await DDNSConfig.create(**config_data.dict())
-    await config.fetch_related('domain__provider')
+    # 只有数据库操作才使用事务
+    try:
+        from tortoise.transactions import in_transaction
+        async with in_transaction():
+            # 创建本地DNS记录
+            await DNSRecord.create(
+                domain_id=config_data.domain_id,
+                name=config_data.subdomain,
+                type=config_data.record_type,
+                value=current_ip,
+                ttl=300,
+                external_id=external_id,
+                enabled=True
+            )
+            
+            # 创建本地DDNS配置
+            config_dict = config_data.dict()
+            config_dict['last_ip'] = current_ip
+            config_dict['last_update_at'] = datetime.now()
+            
+            config = await DDNSConfig.create(**config_dict)
+            
+            # 添加DDNS日志
+            await DDNSLog.create(
+                ddns_config=config,
+                old_ip=None,
+                new_ip=current_ip,
+                status="success",
+                message=f"DDNS配置创建成功，设置初始IP: {current_ip}"
+            )
+            
+    except Exception as e:
+        # 如果数据库操作失败，尝试删除已创建的DNS记录
+        try:
+            await provider_instance.delete_record(domain.name, external_id)
+        except:
+            pass  # 删除失败也不影响错误返回
+        raise HTTPException(status_code=400, detail=f"创建DDNS配置失败: {str(e)}")
     
+    await config.fetch_related('domain__provider')
     return config
 
 
@@ -250,7 +295,6 @@ async def get_ddns_logs(
 
 
 @router.post("/{config_id}/update", response_model=DDNSUpdateResponse)
-@atomic()
 async def update_ddns_record(config_id: int, force: bool = False):
     """手动更新DDNS记录"""
     config = await DDNSConfig.get_or_none(id=config_id).prefetch_related('domain__provider')
@@ -260,50 +304,96 @@ async def update_ddns_record(config_id: int, force: bool = False):
     if not config.enabled and not force:
         raise HTTPException(status_code=400, detail="DDNS配置已禁用")
     
+    # 获取当前公网IP（网络操作，不在事务中）
     try:
-        # 获取当前公网IP
         current_ip = await get_public_ip()
+    except Exception as e:
+        # 记录获取IP失败的日志
+        try:
+            from tortoise.transactions import in_transaction
+            async with in_transaction():
+                await DDNSLog.create(
+                    ddns_config=config,
+                    old_ip=config.last_ip,
+                    new_ip=None,
+                    status="failed",
+                    message=f"获取公网IP失败: {str(e)}"
+                )
+        except:
+            pass
         
-        # 检查IP是否有变化
-        if not force and config.last_ip == current_ip:
-            return DDNSUpdateResponse(
-                success=True,
-                message="IP地址未变化，无需更新",
-                old_ip=config.last_ip,
-                new_ip=current_ip
-            )
-        
-        # 构建完整域名
-        full_domain = f"{config.subdomain}.{config.domain.name}"
-        
-        # 获取服务商实例
-        provider_instance = None
-        if config.domain.provider.type == 1:  # 华为云
-            provider_instance = HuaweiProvider(
-                access_key=config.domain.provider.access_key,
-                secret_key=config.domain.provider.secret_key,
-                region=config.domain.provider.region or "cn-north-4"
-            )
-        elif config.domain.provider.type == 2:  # 阿里云
-            provider_instance = AliyunProvider(
-                access_key=config.domain.provider.access_key,
-                secret_key=config.domain.provider.secret_key,
-                region=config.domain.provider.region or "cn-hangzhou"
-            )
-        
-        if not provider_instance:
-            raise HTTPException(status_code=400, detail="不支持的服务商类型")
-        
-        # 查找现有的DNS记录
-        existing_record = await DNSRecord.get_or_none(
-            domain=config.domain,
-            name=full_domain,
-            type=config.record_type
+        return DDNSUpdateResponse(
+            success=False,
+            message=f"获取公网IP失败: {str(e)}",
+            old_ip=config.last_ip,
+            new_ip=None
         )
+    
+    old_ip = config.last_ip
+    ip_changed = (config.last_ip != current_ip)
+    
+    # 检查IP是否有变化
+    if not force and not ip_changed:
+        # IP未变化，记录日志但不更新DNS
+        try:
+            from tortoise.transactions import in_transaction
+            async with in_transaction():
+                await DDNSLog.create(
+                    ddns_config=config,
+                    old_ip=old_ip,
+                    new_ip=current_ip,
+                    status="success",
+                    message="IP地址未变化，无需更新"
+                )
+        except:
+            pass
         
-        success = False
-        old_ip = config.last_ip
+        return DDNSUpdateResponse(
+            success=True,
+            message="IP地址未变化，无需更新",
+            old_ip=old_ip,
+            new_ip=current_ip
+        )
+    
+    # 构建完整域名
+    full_domain = f"{config.subdomain}.{config.domain.name}"
+    
+    # 获取服务商实例
+    provider_instance = get_provider_instance(config.domain.provider)
+    if not provider_instance:
+        # 记录服务商错误日志
+        try:
+            from tortoise.transactions import in_transaction
+            async with in_transaction():
+                await DDNSLog.create(
+                    ddns_config=config,
+                    old_ip=old_ip,
+                    new_ip=current_ip,
+                    status="failed",
+                    message="不支持的服务商类型"
+                )
+        except:
+            pass
         
+        return DDNSUpdateResponse(
+            success=False,
+            message="不支持的服务商类型",
+            old_ip=old_ip,
+            new_ip=current_ip
+        )
+    
+    # 查找现有的DNS记录
+    existing_record = await DNSRecord.get_or_none(
+        domain=config.domain,
+        name=full_domain,
+        type=config.record_type
+    )
+    
+    success = False
+    error_message = None
+    
+    # 执行DNS更新（网络操作，不在事务中）
+    try:
         if existing_record:
             # 更新现有记录
             record_data = {
@@ -318,10 +408,6 @@ async def update_ddns_record(config_id: int, force: bool = False):
                 existing_record.external_id,
                 record_data
             )
-            
-            if success:
-                existing_record.value = current_ip
-                await existing_record.save()
         else:
             # 创建新记录
             record_data = {
@@ -332,60 +418,68 @@ async def update_ddns_record(config_id: int, force: bool = False):
             }
             
             external_id = await provider_instance.add_record(config.domain.name, record_data)
-            if external_id:
-                await DNSRecord.create(
-                    domain=config.domain,
-                    name=full_domain,
-                    type=config.record_type,
-                    value=current_ip,
-                    ttl=600,
-                    external_id=external_id
-                )
-                success = True
-        
-        # 更新配置
-        config.last_ip = current_ip
-        config.last_update_at = datetime.now()
-        await config.save()
-        
-        # 记录日志
-        log_status = "success" if success else "failed"
-        log_message = "DDNS更新成功" if success else "DDNS更新失败"
-        
-        await DDNSLog.create(
-            ddns_config=config,
-            old_ip=old_ip,
-            new_ip=current_ip,
-            status=log_status,
-            message=log_message
-        )
-        
-        if success:
-            return DDNSUpdateResponse(
-                success=True,
-                message="DDNS更新成功",
+            success = bool(external_id)
+            
+    except Exception as e:
+        error_message = str(e)
+        success = False
+    
+    # 只有数据库操作才使用事务
+    try:
+        from tortoise.transactions import in_transaction
+        async with in_transaction():
+            if success:
+                if existing_record:
+                    # 更新现有记录
+                    existing_record.value = current_ip
+                    await existing_record.save()
+                else:
+                    # 创建新的DNS记录
+                    await DNSRecord.create(
+                        domain=config.domain,
+                        name=full_domain,
+                        type=config.record_type,
+                        value=current_ip,
+                        ttl=600,
+                        external_id=external_id
+                    )
+                
+                # 更新配置
+                config.last_ip = current_ip
+                config.last_update_at = datetime.now()
+                await config.save()
+            
+            # 记录日志
+            log_status = "success" if success else "failed"
+            log_message = "DDNS更新成功" if success else (error_message or "DDNS更新失败")
+            
+            await DDNSLog.create(
+                ddns_config=config,
                 old_ip=old_ip,
                 new_ip=current_ip,
-                updated_at=config.last_update_at
+                status=log_status,
+                message=log_message
             )
-        else:
-            raise HTTPException(status_code=500, detail="DNS记录更新失败")
-            
-    except HTTPException:
-        raise
     except Exception as e:
-        logger.error(f"DDNS更新失败: {e}")
-        
-        # 记录错误日志
-        await DDNSLog.create(
-            ddns_config=config,
-            old_ip=config.last_ip,
-            new_ip="",
-            status="failed",
-            message=f"DDNS更新失败: {str(e)}"
+        error_message = f"数据库操作失败: {str(e)}"
+        success = False
+    
+    # 返回结果
+    if success:
+        return DDNSUpdateResponse(
+            success=True,
+            message="DDNS更新成功",
+            old_ip=old_ip,
+            new_ip=current_ip,
+            updated_at=config.last_update_at
         )
-        
-        raise HTTPException(status_code=500, detail=f"DDNS更新失败: {str(e)}")
+    else:
+        return DDNSUpdateResponse(
+            success=False,
+            message=error_message or "DDNS更新失败",
+            old_ip=old_ip,
+            new_ip=current_ip
+        )
 
 
 @router.post("/update-all")

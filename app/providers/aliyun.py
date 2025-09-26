@@ -64,7 +64,7 @@ class AliyunProvider(BaseProvider):
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.base_url}?{query_string}",
-                timeout=30
+                timeout=10
             )
             response.raise_for_status()
             data = response.json()
@@ -93,7 +93,7 @@ class AliyunProvider(BaseProvider):
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.base_url}?{query_string}",
-                timeout=30
+                timeout=10
             )
             response.raise_for_status()
             data = response.json()
@@ -130,7 +130,7 @@ class AliyunProvider(BaseProvider):
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.base_url}?{query_string}",
-                timeout=30
+                timeout=10
             )
             response.raise_for_status()
             
@@ -161,7 +161,7 @@ class AliyunProvider(BaseProvider):
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.base_url}?{query_string}",
-                timeout=30
+                timeout=10
             )
             response.raise_for_status()
             return True
@@ -178,7 +178,7 @@ class AliyunProvider(BaseProvider):
         async with httpx.AsyncClient() as client:
             response = await client.get(
                 f"{self.base_url}?{query_string}",
-                timeout=30
+                timeout=10
             )
             response.raise_for_status()
             return True
