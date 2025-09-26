@@ -14,7 +14,7 @@ class CertificateConfig(BaseSettings):
     certbot_logs_dir: str = "/var/log/letsencrypt"
     
     # 证书配置
-    certificate_email: str = "admin@hualuo063.cn"
+    certificate_email: str = "example@example.com"
     certificate_rsa_key_size: int = 2048
     certificate_validity_days: int = 90
     
