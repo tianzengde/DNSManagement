@@ -10,8 +10,7 @@ class DNSManager {
     init() {
         this.createModals();
         this.bindEvents();
-        this.loadProviders();
-        this.loadProviderSelect();
+        // 不在初始化时加载任何数据，而是在切换到对应区域时加载
     }
 
     createModals() {
@@ -75,15 +74,24 @@ class DNSManager {
 
         this.currentSection = sectionName;
 
-        // 根据区域加载相应数据
+        // 根据区域加载相应数据，先检查对应的DOM元素是否存在
         if (sectionName === 'providers') {
-            this.loadProviders();
+            // 检查providers-alert容器是否存在
+            if (document.getElementById('providers-alert')) {
+                this.loadProviders();
+            }
         } else if (sectionName === 'domains') {
-            this.loadProviderSelect();
-            this.loadDomains(); // 默认加载全部域名
+            // 检查domains-alert容器是否存在
+            if (document.getElementById('domains-alert')) {
+                this.loadProviderSelect();
+                this.loadDomains(); // 默认加载全部域名
+            }
         } else if (sectionName === 'certificates') {
-            this.loadCertificates();
-            this.loadDomainSelect();
+            // 检查certificates-alert容器是否存在
+            if (document.getElementById('certificates-alert')) {
+                this.loadCertificates();
+                this.loadDomainSelect();
+            }
         }
     }
 
@@ -1396,10 +1404,16 @@ class DNSManager {
     // 工具方法
     showAlert(containerId, message, type) {
         const container = document.getElementById(containerId);
+        if (!container) {
+            console.warn(`Alert container '${containerId}' not found`);
+            return;
+        }
         container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
 
         setTimeout(() => {
-            container.innerHTML = '';
+            if (container) {
+                container.innerHTML = '';
+            }
         }, 3000);
     }
 
