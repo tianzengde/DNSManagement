@@ -135,7 +135,9 @@ CertManagement/
 ├── static/                # 静态文件
 │   └── index.html         # 前端页面
 ├── data/                  # 数据目录
-│   └── dns_management.db  # SQLite数据库
+│   ├── db/                # 数据库目录
+│   │   └── dns_management.db  # SQLite数据库
+│   └── logs/              # 日志目录
 ├── logs/                  # 日志目录
 ├── main.py               # 主应用文件
 ├── test/                 # 测试目录
