@@ -91,22 +91,21 @@ async def renew_certificate(certificate_id: int, renew_data: CertificateRenewReq
     except DoesNotExist:
         raise HTTPException(status_code=404, detail="证书不存在")
     
-    # 这里应该实现实际的证书续期逻辑
-    # 目前只是模拟续期
+    # 使用真实的证书续期服务
     try:
-        from datetime import timezone
+        from app.services.certificate_service import CertificateService
         
-        # 更新证书状态和续期时间
-        certificate.status = CertificateStatus.VALID
-        certificate.last_renewed_at = datetime.now(timezone.utc)
-        certificate.not_after = datetime.now(timezone.utc) + timedelta(days=90)  # 假设续期90天
-        await certificate.save()
+        certificate_service = CertificateService()
+        result = await certificate_service.renew_certificate(certificate_id)
         
-        return CertificateRenewResponse(
-            success=True,
-            message="证书续期成功",
-            renewed_at=certificate.last_renewed_at
-        )
+        if result['success']:
+            return CertificateRenewResponse(
+                success=True,
+                message="证书续期成功",
+                renewed_at=datetime.now(timezone.utc)
+            )
+        else:
+            raise HTTPException(status_code=500, detail=result.get('message', '证书续期失败'))
     except Exception as e:
         logger.error(f"证书续期失败: {e}")
         return CertificateRenewResponse(
@@ -150,8 +149,7 @@ async def check_certificate_status(certificate_id: int):
     except DoesNotExist:
         raise HTTPException(status_code=404, detail="证书不存在")
     
-    # 这里应该实现实际的证书状态检查逻辑
-    # 目前只是模拟状态检查
+    # 检查证书状态（基于到期时间）
     from datetime import timezone
     
     # 获取当前UTC时间

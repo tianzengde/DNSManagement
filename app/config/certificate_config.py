@@ -29,8 +29,8 @@ class CertificateConfig(BaseSettings):
     # 证书存储配置
     certificate_storage_path: str = "./data/certificates"
     
-    # 强制使用真实模式（跳过模拟模式）
-    force_real_mode: bool = False
+    # 证书申请模式（仅支持真实模式）
+    real_mode_only: bool = True
     
     class Config:
         env_prefix = "CERTIFICATE_"

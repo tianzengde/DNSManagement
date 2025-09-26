@@ -44,109 +44,9 @@ class CertificateService:
                 logger.info(f"找到certbot: {path}")
                 return path
         
-        logger.warning("未找到certbot，将使用模拟模式")
-        return None
+        logger.error("未找到certbot，无法申请证书")
+        raise RuntimeError("未找到certbot可执行文件，请确保已正确安装certbot")
     
-    async def _simulate_certificate_request(
-        self, 
-        domain: Domain, 
-        full_domain: str, 
-        certificate_id: int
-    ) -> Dict:
-        """
-        模拟证书申请（用于测试和开发环境）
-        
-        Args:
-            domain: 域名对象
-            full_domain: 完整域名
-            certificate_id: 证书ID
-            
-        Returns:
-            Dict: 申请结果
-        """
-        try:
-            logger.info(f"模拟申请证书: {full_domain}")
-            
-            # 模拟DNS验证过程
-            await asyncio.sleep(2)  # 模拟处理时间
-            
-            # 创建模拟的验证记录
-            verification_record = {
-                'name': f'_acme-challenge.{full_domain}',
-                'value': '"simulated-challenge-token"',  # TXT记录值需要用引号包围
-                'type': 'TXT',
-                'ttl': 300
-            }
-            
-            logger.info(f"模拟添加DNS验证记录: {verification_record['name']}")
-            
-            # 模拟添加DNS记录
-            await self._add_dns_verification_record(domain, verification_record)
-            
-            # 模拟等待DNS传播
-            await asyncio.sleep(3)
-            
-            logger.info(f"模拟证书申请成功: {full_domain}")
-            
-            # 模拟清理DNS验证记录
-            await self._remove_dns_verification_record(domain, verification_record)
-            
-            return {
-                'success': True,
-                'not_after': datetime.now() + timedelta(days=self.config.certificate_validity_days),
-                'not_before': datetime.now(),
-                'issuer': "Let's Encrypt (模拟)",
-                'subject': full_domain,
-                'serial_number': f"SIM{datetime.now().strftime('%Y%m%d%H%M%S')}"
-            }
-            
-        except Exception as e:
-            logger.error(f"模拟证书申请失败: {str(e)}")
-            return {
-                'success': False,
-                'message': f"模拟证书申请失败: {str(e)}"
-            }
-    
-    async def _simulate_certificate_renewal(
-        self, 
-        domain: Domain, 
-        full_domain: str, 
-        certificate_id: int
-    ) -> Dict:
-        """
-        模拟证书续期（用于测试和开发环境）
-        
-        Args:
-            domain: 域名对象
-            full_domain: 完整域名
-            certificate_id: 证书ID
-            
-        Returns:
-            Dict: 续期结果
-        """
-        try:
-            logger.info(f"模拟续期证书: {full_domain}")
-            
-            # 模拟DNS验证过程
-            await asyncio.sleep(2)  # 模拟处理时间
-            
-            logger.info(f"模拟证书续期成功: {full_domain}")
-            
-            return {
-                'success': True,
-                'not_after': datetime.now() + timedelta(days=self.config.certificate_validity_days),
-                'not_before': datetime.now(),
-                'issuer': "Let's Encrypt (模拟)",
-                'subject': full_domain,
-                'serial_number': f"REN{datetime.now().strftime('%Y%m%d%H%M%S')}"
-            }
-            
-        except Exception as e:
-            logger.error(f"模拟证书续期失败: {str(e)}")
-            return {
-                'success': False,
-                'message': f"模拟证书续期失败: {str(e)}"
-            }
     
     async def request_certificate(self, domain_id: int, subdomain: str = None, full_domain: str = None, name: str = None, auto_renew: bool = True) -> Dict:
         """
@@ -189,21 +89,14 @@ class CertificateService:
                 auto_renew=auto_renew
             )
             
-            # 检查是否强制使用真实模式
-            if self.config.force_real_mode and not self.certbot_path:
-                raise Exception("强制真实模式已启用，但未找到certbot")
-            
             # 检查是否有certbot
             if not self.certbot_path:
-                # 使用模拟模式
-                result = await self._simulate_certificate_request(
-                    domain, full_domain, certificate.id
-                )
-            else:
-                # 执行真实的DNS验证申请
-                result = await self._request_certificate_with_dns_validation(
-                    domain, full_domain, certificate.id
-                )
+                raise RuntimeError("未找到certbot可执行文件，无法申请证书")
+            
+            # 执行真实的DNS验证申请
+            result = await self._request_certificate_with_dns_validation(
+                domain, full_domain, certificate.id
+            )
             
             if result['success']:
                 # 更新证书状态
@@ -373,17 +266,13 @@ class CertificateService:
                     
                     # DNS验证记录由cleanup hook自动清理
                     
-                    # 检查是否是权限问题，如果是则切换到模拟模式（除非强制真实模式）
+                    # 检查是否是权限问题
                     if "administrative rights" in error_msg or "权限" in error_msg:
-                        if self.config.force_real_mode:
-                            logger.error("强制真实模式已启用，但certbot需要管理员权限")
-                            return {
-                                'success': False,
-                                'message': f"certbot需要管理员权限，请以管理员身份运行应用或禁用强制真实模式"
-                            }
-                        else:
-                            logger.warning("检测到certbot权限问题，自动切换到模拟模式")
-                            return await self._simulate_certificate_request(domain, full_domain, certificate_id)
+                        logger.error("certbot需要管理员权限")
+                        return {
+                            'success': False,
+                            'message': f"certbot需要管理员权限，请以管理员身份运行应用"
+                        }
                     
                     return {
                         'success': False,
@@ -398,17 +287,13 @@ class CertificateService:
             if process:
                 await self._cleanup_process(process)
             
-            # 检查是否是权限问题，如果是则切换到模拟模式（除非强制真实模式）
+            # 检查是否是权限问题
             if "administrative rights" in error_str or "权限" in error_str:
-                if self.config.force_real_mode:
-                    logger.error("强制真实模式已启用，但certbot需要管理员权限")
-                    return {
-                        'success': False,
-                        'message': f"certbot需要管理员权限，请以管理员身份运行应用或禁用强制真实模式"
-                    }
-                else:
-                    logger.warning("检测到certbot权限问题，自动切换到模拟模式")
-                    return await self._simulate_certificate_request(domain, full_domain, certificate_id)
+                logger.error("certbot需要管理员权限")
+                return {
+                    'success': False,
+                    'message': f"certbot需要管理员权限，请以管理员身份运行应用"
+                }
             
             return {
                 'success': False,
@@ -767,15 +652,12 @@ class CertificateService:
             
             # 检查是否有certbot
             if not self.certbot_path:
-                # 使用模拟模式
-                result = await self._simulate_certificate_renewal(
-                    certificate.domain, full_domain, certificate_id
-                )
-            else:
-                # 执行真实的续期
-                result = await self._renew_certificate_with_dns_validation(
-                    certificate.domain, full_domain, certificate_id
-                )
+                raise RuntimeError("未找到certbot可执行文件，无法续期证书")
+            
+            # 执行真实的续期
+            result = await self._renew_certificate_with_dns_validation(
+                certificate.domain, full_domain, certificate_id
+            )
             
             if result['success']:
                 # 更新证书状态
