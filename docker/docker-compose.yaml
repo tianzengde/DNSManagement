@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  dns-management:
+    image: tian/dnsmanagement:latest-test
+    container_name: dns-management
+    ports:
+      - "8011:8000"
+    volumes:
+      # 包含证书文件数据文件和日志文件
+      - ./data/db:/app/data/db
+      - ./data/logs:/app/data/logs
+      - ./data/letsencrypt:/app/data/certificates/certbot_config/archive
+    restart: unless-stopped
+    # 健康检测不需要就注释
+    # healthcheck:
+    #   test: ["CMD", "curl", "-f", "http://localhost:8000/api/auth/dashboard-stats"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 40s
+
+    # 如果需要管理员权限运行certbot，可以取消注释下面的行
+    # privileged: true
+    # 或者使用cap_add来添加特定权限
+    cap_add:
+      - NET_ADMIN
+    networks:
+      - dns-management-network
+
+networks:
+  dns-management-network:
+    driver: bridge
