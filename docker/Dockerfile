@@ -45,43 +45,23 @@ RUN apk add --no-cache \
 # 安装uv
 RUN pip install uv
 
-# 创建非root用户
-RUN addgroup -g 1000 app && adduser -D -u 1000 -G app app
-
-# 创建用户主目录和缓存目录
-RUN mkdir -p /home/app/.cache/uv && chown -R app:app /home/app
-
 # 设置工作目录
 WORKDIR /app
 
 # 从构建阶段复制虚拟环境
 COPY --from=builder /app/.venv /app/.venv
 
-# 复制应用代码（只复制必要的文件）
-COPY --chown=app:app app/ ./app/
-COPY --chown=app:app scripts/ ./scripts/
-COPY --chown=app:app static/ ./static/
-COPY --chown=app:app main.py ./
-
-# 创建必要的目录
-RUN mkdir -p /app/data/logs \
-    /app/data/certificates \
-    /etc/letsencrypt \
-    /var/lib/letsencrypt \
-    /var/log/letsencrypt
+# 复制应用代码
+COPY app/ ./app/
+COPY scripts/ ./scripts/
+COPY static/ ./static/
+COPY main.py ./
 
 # 复制DNS验证脚本
-COPY --chown=app:app scripts/dns_auth_hook.py /usr/local/bin/dns_auth_hook.py
+COPY scripts/dns_auth_hook.py /usr/local/bin/dns_auth_hook.py
 
-# 设置目录和文件权限
-RUN chmod -R 755 /etc/letsencrypt \
-    /var/lib/letsencrypt \
-    /var/log/letsencrypt && \
-    chmod +x /usr/local/bin/dns_auth_hook.py && \
-    chown -R app:app /app
-
-# 切换到非root用户
-USER app
+# 设置文件权限
+RUN chmod +x /usr/local/bin/dns_auth_hook.py
 
 # 启动命令
 CMD ["uv", "run", "main.py"]
