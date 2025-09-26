@@ -161,7 +161,7 @@
                                         <label for="ddnsSubdomain">子域名</label>
                                         <div style="display: flex; align-items: center; gap: 0.5rem; width: 100%;">
                                             <input type="text" id="ddnsSubdomain" required placeholder="如：home, office, ddns等" 
-                                                   style="flex: 0 0 56%;" oninput="ddnsApp.updateFullDomainPreview()">
+                                                   style="flex: 0 0 56%;">
                                             <span id="domainPreview" style="color: #000; font-weight: 500; flex: 0 0 44%; padding-left: 0.5rem;"></span>
                                         </div>
                                         <small class="form-text">只需输入子域名前缀，完整域名将自动生成</small>
@@ -221,11 +221,6 @@
                     }
                 });
                 
-                // 表单提交事件
-                document.getElementById('ddnsForm').addEventListener('submit', (e) => {
-                    this.handleDDNSSubmit(e);
-                });
-                
                 return modal;
             }
 
@@ -261,6 +256,15 @@
                             this.updateFullDomainPreview();
                         });
                         domainSelect.dataset.bound = 'true';
+                    }
+                    
+                    // 绑定子域名输入变化事件
+                    const subdomainInput = document.getElementById('ddnsSubdomain');
+                    if (subdomainInput && !subdomainInput.dataset.bound) {
+                        subdomainInput.addEventListener('input', () => {
+                            this.updateFullDomainPreview();
+                        });
+                        subdomainInput.dataset.bound = 'true';
                     }
                 }, 100);
             }
@@ -310,16 +314,16 @@
                             <span class="status ${statusClass}" style="display: inline-block; white-space: nowrap;">${statusText}</span>
                         </td>
                         <td style="text-align: center;">
-                            <button class="btn btn-primary" onclick="ddnsApp.updateDDNS(${config.id}, this)">
+                            <button class="btn btn-primary" data-config-id="${config.id}" onclick="ddnsApp.updateDDNS(this.dataset.configId, this)">
                                 🔄 更新
                             </button>
-                            <button class="btn btn-info" onclick="ddnsApp.viewDDNSLogs(${config.id}, '${config.name}')">
+                            <button class="btn btn-info" data-config-id="${config.id}" data-config-name="${config.name.replace(/'/g, '&apos;').replace(/"/g, '&quot;')}" onclick="ddnsApp.viewDDNSLogs(this.dataset.configId, this.dataset.configName)">
                                 📊 日志
                             </button>
-                            <button class="btn btn-secondary" onclick="ddnsApp.editDDNS(${config.id})">
+                            <button class="btn btn-secondary" data-config-id="${config.id}" onclick="ddnsApp.editDDNS(this.dataset.configId)">
                                 ✏️ 编辑
                             </button>
-                            <button class="btn btn-danger" onclick="ddnsApp.deleteDDNS(${config.id}, this)">
+                            <button class="btn btn-danger" data-config-id="${config.id}" onclick="ddnsApp.deleteDDNS(this.dataset.configId, this)">
                                 🗑️ 删除
                             </button>
                         </td>

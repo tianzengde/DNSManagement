@@ -13,6 +13,7 @@ class SchedulerService:
     def __init__(self):
         self.scheduler = AsyncIOScheduler()
         self.sync_service = DomainSyncService()
+        self.ddns_service = None
         self._setup_jobs()
     
     def _setup_jobs(self):
@@ -92,6 +93,29 @@ class SchedulerService:
             logger.info(f"手动同步任务执行完成: 服务商{provider_id}")
         except Exception as e:
             logger.error(f"手动同步任务执行失败: 服务商{provider_id}, 错误: {e}")
+    
+    async def initialize_ddns(self):
+        """初始化DDNS服务"""
+        try:
+            logger.info("开始初始化DDNS调度服务...")
+            from app.services.ddns_service import DDNSUpdateService
+            self.ddns_service = DDNSUpdateService(self.scheduler)
+            await self.ddns_service.load_ddns_jobs()
+            
+            # 获取并输出调度器状态
+            jobs = self.ddns_service.list_all_jobs()
+            logger.info(f"DDNS调度器初始化完成")
+            logger.info(f"  调度器运行状态: {self.scheduler.running}")
+            logger.info(f"  已加载DDNS定时任务数量: {len(jobs)}")
+            for job in jobs:
+                logger.info(f"    任务ID: {job['id']}, 下次执行: {job['next_run_time']}")
+                
+        except Exception as e:
+            logger.error(f"DDNS服务初始化失败: {str(e)}")
+    
+    def get_ddns_service(self):
+        """获取DDNS服务实例"""
+        return self.ddns_service
 
 
 # 全局调度器实例

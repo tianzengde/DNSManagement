@@ -247,7 +247,7 @@ class DDNSConfigUpdate(BaseModel):
 
 class DDNSConfigResponse(DDNSConfigBase):
     """DDNS配置响应模型"""
-    id: int
+    id: str
     domain: DomainResponse
     last_update_at: Optional[datetime] = None
     last_ip: Optional[str] = None
@@ -261,7 +261,7 @@ class DDNSConfigResponse(DDNSConfigBase):
 class DDNSLogResponse(BaseModel):
     """DDNS日志响应模型"""
     id: int
-    ddns_config_id: int
+    ddns_config_id: str
     old_ip: Optional[str] = None
     new_ip: str
     status: str

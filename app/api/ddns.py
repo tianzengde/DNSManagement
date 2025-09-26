@@ -65,7 +65,7 @@ async def get_ddns_configs():
 
 
 @router.get("/{config_id}", response_model=DDNSConfigResponse)
-async def get_ddns_config(config_id: int):
+async def get_ddns_config(config_id: str):
     """获取单个DDNS配置"""
     config = await DDNSConfig.get_or_none(id=config_id).prefetch_related('domain__provider')
     if not config:
@@ -159,7 +159,9 @@ async def create_ddns_config(config_data: DDNSConfigCreate):
             )
             
             # 创建本地DDNS配置
+            import uuid
             config_dict = config_data.dict()
+            config_dict['id'] = uuid.uuid4()  # 生成UUID
             config_dict['last_ip'] = current_ip
             config_dict['last_update_at'] = datetime.now()
             
@@ -183,12 +185,24 @@ async def create_ddns_config(config_data: DDNSConfigCreate):
         raise HTTPException(status_code=400, detail=f"创建DDNS配置失败: {str(e)}")
     
     await config.fetch_related('domain__provider')
+    
+    # 如果配置启用且为自动更新，添加定时任务
+    if config.enabled and config.update_method == "auto":
+        from app.services.scheduler_service import scheduler_service
+        ddns_service = scheduler_service.get_ddns_service()
+        if ddns_service:
+            await ddns_service.add_ddns_job(config)
+            logger.info(f"DDNS调度器：为配置 '{config.name}' 添加定时任务，间隔 {config.update_interval} 秒")
+        else:
+            logger.warning(f"DDNS调度器：服务未初始化，无法为配置 '{config.name}' 添加定时任务")
+    else:
+        logger.info(f"DDNS调度器：配置 '{config.name}' 未启用或非自动更新模式，跳过添加定时任务")
+    
     return config
 
 
 @router.put("/{config_id}", response_model=DDNSConfigResponse)
-@atomic()
-async def update_ddns_config(config_id: int, config_data: DDNSConfigUpdate):
+async def update_ddns_config(config_id: str, config_data: DDNSConfigUpdate):
     """更新DDNS配置"""
     config = await DDNSConfig.get_or_none(id=config_id)
     if not config:
@@ -215,20 +229,72 @@ async def update_ddns_config(config_id: int, config_data: DDNSConfigUpdate):
         if existing_config:
             raise HTTPException(status_code=400, detail="该域名下已存在相同的子域名配置")
     
-    await config.update_from_dict(update_data)
-    await config.save()
-    await config.fetch_related('domain__provider')
+    # 记录更新前的状态
+    old_enabled = config.enabled
+    old_update_interval = config.update_interval
+    old_update_method = config.update_method
     
+    # 更新配置
+    from tortoise.transactions import in_transaction
+    async with in_transaction():
+        await config.update_from_dict(update_data)
+        await config.save()
+    
+    # 获取DDNS服务实例
+    from app.services.scheduler_service import scheduler_service
+    ddns_service = scheduler_service.get_ddns_service()
+    
+    if ddns_service:
+        # 检查是否需要管理定时任务
+        new_enabled = config.enabled
+        new_update_interval = config.update_interval
+        new_update_method = config.update_method
+        
+        # 如果状态、间隔或方式发生变化，重新管理定时任务
+        if (old_enabled != new_enabled or 
+            old_update_interval != new_update_interval or 
+            old_update_method != new_update_method):
+            
+            logger.info(f"DDNS调度器：配置 '{config.name}' 参数变化，重新管理定时任务")
+            logger.info(f"  启用状态: {old_enabled} -> {new_enabled}")
+            logger.info(f"  更新间隔: {old_update_interval} -> {new_update_interval}")
+            logger.info(f"  更新方式: {old_update_method} -> {new_update_method}")
+            
+            # 删除旧的定时任务
+            ddns_service.remove_ddns_job(str(config_id))
+            logger.info(f"DDNS调度器：删除配置 '{config.name}' 的旧定时任务")
+            
+            # 如果新状态是启用且为自动更新，添加新的定时任务
+            if new_enabled and new_update_method == "auto":
+                await config.fetch_related('domain__provider')
+                await ddns_service.add_ddns_job(config)
+                logger.info(f"DDNS调度器：为配置 '{config.name}' 添加新定时任务，间隔 {new_update_interval} 秒")
+            else:
+                logger.info(f"DDNS调度器：配置 '{config.name}' 未启用或非自动更新模式，不添加定时任务")
+        else:
+            logger.debug(f"DDNS调度器：配置 '{config.name}' 参数未变化，无需更新定时任务")
+    else:
+        logger.warning(f"DDNS调度器：服务未初始化，无法管理配置 '{config.name}' 的定时任务")
+    
+    await config.fetch_related('domain__provider')
     return config
 
 
 @router.delete("/{config_id}")
-@atomic()
-async def delete_ddns_config(config_id: int):
+async def delete_ddns_config(config_id: str):
     """删除DDNS配置"""
     config = await DDNSConfig.get_or_none(id=config_id).prefetch_related('domain__provider')
     if not config:
         raise HTTPException(status_code=404, detail="DDNS配置不存在")
+    
+    # 删除定时任务
+    from app.services.scheduler_service import scheduler_service
+    ddns_service = scheduler_service.get_ddns_service()
+    if ddns_service:
+        ddns_service.remove_ddns_job(config_id)
+        logger.info(f"DDNS调度器：删除配置 '{config.name}' 的定时任务")
+    else:
+        logger.warning(f"DDNS调度器：服务未初始化，无法删除配置 '{config.name}' 的定时任务")
     
     # 尝试删除对应的DNS记录
     try:
@@ -260,7 +326,7 @@ async def delete_ddns_config(config_id: int):
 
 @router.get("/{config_id}/logs")
 async def get_ddns_logs(
-    config_id: int,
+    config_id: str,
     page: int = Query(1, ge=1, description="页码"),
     page_size: int = Query(10, ge=1, le=100, description="每页记录数")
 ):
@@ -295,7 +361,7 @@ async def get_ddns_logs(
 
 
 @router.post("/{config_id}/update", response_model=DDNSUpdateResponse)
-async def update_ddns_record(config_id: int, force: bool = False):
+async def update_ddns_record(config_id: str, force: bool = False):
     """手动更新DDNS记录"""
     config = await DDNSConfig.get_or_none(id=config_id).prefetch_related('domain__provider')
     if not config:
@@ -560,3 +626,5 @@ async def get_ddns_status_summary():
         "recent_failures": recent_failures,
         "last_check": datetime.now()
     }
+
+

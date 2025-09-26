@@ -41,6 +41,9 @@ async def lifespan(app: FastAPI):
     scheduler_service.start()
     logger.info("定时任务调度器已启动")
     
+    # 初始化DDNS调度服务
+    await scheduler_service.initialize_ddns()
+    
     logger.info("应用启动完成")
     
     yield

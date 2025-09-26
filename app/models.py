@@ -3,6 +3,7 @@ from tortoise.models import Model
 from tortoise import fields
 from datetime import datetime
 from enum import IntEnum
+import uuid
 
 
 class ProviderType(IntEnum):
@@ -127,7 +128,7 @@ class User(Model):
 
 class DDNSConfig(Model):
     """DDNS配置模型"""
-    id = fields.IntField(pk=True)
+    id = fields.CharField(pk=True, default=lambda: str(uuid.uuid4()), max_length=36, description="主键ID")
     name = fields.CharField(max_length=100, description="DDNS配置名称")
     domain = fields.ForeignKeyField('models.Domain', related_name='ddns_configs', description="关联域名")
     subdomain = fields.CharField(max_length=100, description="子域名")
