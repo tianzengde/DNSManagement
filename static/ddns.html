@@ -293,7 +293,7 @@
                     const row = document.createElement('tr');
                     const statusClass = config.enabled ? 'enabled' : 'disabled';
                     const statusText = config.enabled ? '启用' : '禁用';
-                    const fullDomain = `${config.subdomain}.${config.domain.name}`;
+                    const fullDomain = config.subdomain; // 直接使用完整域名，不再拼接
                     const recordTypeText = config.record_type === 1 ? 'A' : 'AAAA';
                     const lastUpdate = config.last_update_at ? 
                         new Date(config.last_update_at).toLocaleString() : '从未更新';

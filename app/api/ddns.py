@@ -11,6 +11,7 @@ from app.schemas import (
     DDNSLogResponse, DDNSUpdateRequest, DDNSUpdateResponse
 )
 from app.providers import HuaweiProvider, AliyunProvider
+from app.providers.base import get_provider_instance
 import logging
 
 router = APIRouter(prefix="/api/ddns", tags=["ddns"])
@@ -73,19 +74,54 @@ async def create_ddns_config(config_data: DDNSConfigCreate):
     if not config_data.subdomain or not config_data.subdomain.strip():
         raise HTTPException(status_code=400, detail="子域名不能为空")
     
-    # 检查是否已存在相同的配置
+    # 验证子域名是否属于指定域名
+    if not config_data.subdomain.endswith(f".{domain.name}") and config_data.subdomain != domain.name:
+        raise HTTPException(status_code=400, detail=f"子域名必须属于域名 {domain.name}")
+    
+    # 检查是否已存在相同的DDNS配置
     existing_config = await DDNSConfig.get_or_none(
         domain_id=config_data.domain_id,
         subdomain=config_data.subdomain
     )
     if existing_config:
-        raise HTTPException(status_code=400, detail="该域名下已存在相同的子域名配置")
+        raise HTTPException(status_code=400, detail="该域名下已存在相同的DDNS配置")
     
     # 验证更新间隔
     if config_data.update_interval < 60:
         raise HTTPException(status_code=400, detail="更新间隔不能少于60秒")
     
-    # 创建配置
+    # 检查DNS解析记录是否已存在
+    existing_record = await DNSRecord.get_or_none(
+        domain_id=config_data.domain_id,
+        name=config_data.subdomain,
+        type=config_data.record_type
+    )
+    if existing_record:
+        raise HTTPException(status_code=400, detail="该DNS解析记录已存在，请先删除现有记录")
+    
+    # 调用服务商API创建DNS记录
+    try:
+        # 获取服务商实例
+        provider_instance = get_provider_instance(domain.provider)
+        if not provider_instance:
+            raise HTTPException(status_code=400, detail="服务商配置错误")
+        
+        # 准备DNS记录数据
+        record_data = {
+            'name': config_data.subdomain,
+            'type': 'A' if config_data.record_type == 1 else 'AAAA',  # 转换为字符串类型
+            'value': '127.0.0.1',  # 临时IP，DDNS会自动更新
+            'ttl': 300
+        }
+        
+        # 调用服务商API创建记录
+        await provider_instance.add_record(domain.name, record_data)
+        
+    except Exception as e:
+        # 服务商API调用失败，回滚
+        raise HTTPException(status_code=400, detail=f"创建DNS记录失败: {str(e)}")
+    
+    # 创建本地DDNS配置
     config = await DDNSConfig.create(**config_data.dict())
     await config.fetch_related('domain__provider')
     
@@ -109,6 +145,11 @@ async def update_ddns_config(config_id: int, config_data: DDNSConfigUpdate):
     
     # 如果修改了子域名，检查是否冲突
     if 'subdomain' in update_data:
+        # 验证子域名是否属于指定域名
+        domain = await Domain.get_or_none(id=config.domain_id)
+        if domain and not update_data['subdomain'].endswith(f".{domain.name}") and update_data['subdomain'] != domain.name:
+            raise HTTPException(status_code=400, detail=f"子域名必须属于域名 {domain.name}")
+        
         existing_config = await DDNSConfig.get_or_none(
             domain_id=config.domain_id,
             subdomain=update_data['subdomain']
@@ -127,9 +168,30 @@ async def update_ddns_config(config_id: int, config_data: DDNSConfigUpdate):
 @atomic()
 async def delete_ddns_config(config_id: int):
     """删除DDNS配置"""
-    config = await DDNSConfig.get_or_none(id=config_id)
+    config = await DDNSConfig.get_or_none(id=config_id).prefetch_related('domain__provider')
     if not config:
         raise HTTPException(status_code=404, detail="DDNS配置不存在")
+    
+    # 尝试删除对应的DNS记录
+    try:
+        # 查找对应的DNS记录
+        dns_record = await DNSRecord.get_or_none(
+            domain_id=config.domain_id,
+            name=config.subdomain,
+            type=config.record_type
+        )
+        
+        if dns_record:
+            # 获取服务商实例
+            provider_instance = get_provider_instance(config.domain.provider)
+            if provider_instance:
+                # 删除DNS记录
+                await provider_instance.delete_record(config.domain.name, dns_record.external_id)
+                # 删除本地DNS记录
+                await dns_record.delete()
+    except Exception as e:
+        # 删除DNS记录失败，记录日志但不阻止DDNS配置删除
+        logger.warning(f"删除DNS记录失败: {str(e)}")
     
     # 删除相关日志
     await DDNSLog.filter(ddns_config=config).delete()

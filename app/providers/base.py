@@ -1,7 +1,19 @@
 """DNS服务商基础类"""
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
-from app.models import DNSRecord, RecordType
+from app.models import DNSRecord, RecordType, Provider
+
+
+def get_provider_instance(provider: Provider):
+    """根据服务商类型获取实例"""
+    if provider.type == 1:  # 华为云
+        from app.providers.huawei import HuaweiProvider
+        return HuaweiProvider(provider.access_key, provider.secret_key, provider.region)
+    elif provider.type == 2:  # 阿里云
+        from app.providers.aliyun import AliyunProvider
+        return AliyunProvider(provider.access_key, provider.secret_key, provider.region)
+    else:
+        return None
 
 
 class BaseProvider(ABC):
