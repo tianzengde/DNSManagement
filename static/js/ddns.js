@@ -1,0 +1,703 @@
+/**
+ * DDNS设置页面管理器
+ */
+class DDNSManager {
+    constructor() {
+        this.init();
+    }
+
+    init() {
+        this.createModals();
+        this.bindEvents();
+        this.loadDDNSConfigs();
+    }
+
+    createModals() {
+        // 创建DDNS配置模态框
+        if (!document.getElementById('ddnsModal')) {
+            this.ddnsModal = this.createDDNSModal();
+        }
+    }
+
+    createDDNSModal() {
+        const modalContent = `
+            <div class="modal" id="ddnsModal">
+                <div class="modal-content" style="max-width: 600px;">
+                    <div class="modal-header">
+                        <h3 id="ddnsModalTitle">添加DDNS配置</h3>
+                        <span class="close">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <form id="ddnsForm">
+                            <div class="form-group">
+                                <label for="ddnsName">配置名称</label>
+                                <input type="text" id="ddnsName" required placeholder="如：家庭网络、办公网络等">
+                            </div>
+                            <div class="form-group">
+                                <label for="ddnsDomain">选择域名</label>
+                                <select id="ddnsDomain" required>
+                                    <option value="">请选择域名</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ddnsSubdomain">子域名</label>
+                                <div style="display: flex; align-items: center; gap: 0.5rem; width: 100%;">
+                                    <input type="text" id="ddnsSubdomain" required placeholder="如：home, office, ddns等" 
+                                           style="flex: 0 0 56%;">
+                                    <span id="domainPreview" style="color: #000; font-weight: 500; flex: 0 0 44%; padding-left: 0.5rem;"></span>
+                                </div>
+                                <small class="form-text">只需输入子域名前缀，完整域名将自动生成</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="ddnsRecordType">记录类型</label>
+                                <select id="ddnsRecordType" required>
+                                    <option value="1">A (IPv4)</option>
+                                    <option value="2">AAAA (IPv6)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ddnsUpdateInterval">更新间隔（秒）</label>
+                                <input type="number" id="ddnsUpdateInterval" min="60" value="300" required>
+                                <small class="form-text">最小间隔60秒，推荐300秒（5分钟）</small>
+                            </div>
+                            <div class="form-group">
+                                <label for="ddnsUpdateMethod">更新方式</label>
+                                <select id="ddnsUpdateMethod" required>
+                                    <option value="auto">自动更新</option>
+                                    <option value="manual">手动更新</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="switch-container">
+                                    <span>启用</span>
+                                    <label class="switch">
+                                        <input type="checkbox" id="ddnsEnabled" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </label>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <div style="text-align: right;">
+                            <button type="button" class="btn btn-secondary" onclick="ddnsApp.closeDDNSModal()">取消</button>
+                            <button type="submit" class="btn btn-primary" form="ddnsForm">保存</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalContent);
+        
+        // 绑定事件
+        const modal = document.getElementById('ddnsModal');
+        const closeBtn = modal.querySelector('.close');
+        
+        closeBtn.addEventListener('click', () => {
+            this.closeDDNSModal();
+        });
+        
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                this.closeDDNSModal();
+            }
+        });
+        
+        return modal;
+    }
+
+    bindEvents() {
+        // 模态框关闭
+        document.querySelectorAll('.close').forEach(closeBtn => {
+            closeBtn.addEventListener('click', (e) => {
+                this.closeModal(e.target.closest('.modal'));
+            });
+        });
+
+        // 点击模态框外部关闭
+        window.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal')) {
+                this.closeModal(e.target);
+            }
+        });
+
+        // 延迟绑定表单提交事件
+        setTimeout(() => {
+            const ddnsForm = document.getElementById('ddnsForm');
+            if (ddnsForm && !ddnsForm.dataset.bound) {
+                ddnsForm.addEventListener('submit', (e) => {
+                    this.handleDDNSSubmit(e);
+                });
+                ddnsForm.dataset.bound = 'true';
+            }
+            
+            // 绑定域名选择变化事件
+            const domainSelect = document.getElementById('ddnsDomain');
+            if (domainSelect && !domainSelect.dataset.bound) {
+                domainSelect.addEventListener('change', () => {
+                    this.updateFullDomainPreview();
+                });
+                domainSelect.dataset.bound = 'true';
+            }
+            
+            // 绑定子域名输入变化事件
+            const subdomainInput = document.getElementById('ddnsSubdomain');
+            if (subdomainInput && !subdomainInput.dataset.bound) {
+                subdomainInput.addEventListener('input', () => {
+                    this.updateFullDomainPreview();
+                });
+                subdomainInput.dataset.bound = 'true';
+            }
+        }, 100);
+    }
+
+    async loadDDNSConfigs() {
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch('/api/ddns/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const configs = await response.json();
+            this.renderDDNSConfigs(configs);
+        } catch (error) {
+            this.showAlert('ddns-alert', '加载DDNS配置失败: ' + error.message, 'error');
+        }
+    }
+
+    renderDDNSConfigs(configs) {
+        const tbody = document.getElementById('ddns-table');
+        tbody.innerHTML = '';
+
+        if (configs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center;">暂无DDNS配置</td></tr>';
+            return;
+        }
+
+        configs.forEach(config => {
+            const row = document.createElement('tr');
+            const statusClass = config.enabled ? 'enabled' : 'disabled';
+            const statusText = config.enabled ? '启用' : '禁用';
+            const fullDomain = config.subdomain; // 直接使用完整域名，不再拼接
+            const recordTypeText = config.record_type === 1 ? 'A' : 'AAAA';
+            const lastUpdate = config.last_update_at ? 
+                new Date(config.last_update_at).toLocaleString() : '从未更新';
+            const updateInterval = this.formatInterval(config.update_interval);
+
+            row.innerHTML = `
+                <td style="text-align: center; vertical-align: middle;">${config.name}</td>
+                <td style="text-align: center; vertical-align: middle;">${fullDomain}</td>
+                <td style="text-align: center; vertical-align: middle;">${recordTypeText}</td>
+                <td style="text-align: center; vertical-align: middle;">${config.last_ip || '-'}</td>
+                <td style="text-align: center; vertical-align: middle;">${updateInterval}</td>
+                <td style="text-align: center; vertical-align: middle;">${lastUpdate}</td>
+                <td style="text-align: center; vertical-align: middle;">
+                    <span class="status ${statusClass}" style="display: inline-block; white-space: nowrap;">${statusText}</span>
+                </td>
+                <td style="text-align: center;">
+                    <button class="btn btn-primary" data-config-id="${config.id}" onclick="ddnsApp.updateDDNS(this.dataset.configId, this)">
+                        🔄 更新
+                    </button>
+                    <button class="btn btn-info" data-config-id="${config.id}" data-config-name="${config.name.replace(/'/g, '&apos;').replace(/"/g, '&quot;')}" onclick="ddnsApp.viewDDNSLogs(this.dataset.configId, this.dataset.configName)">
+                        📊 日志
+                    </button>
+                    <button class="btn btn-secondary" data-config-id="${config.id}" onclick="ddnsApp.editDDNS(this.dataset.configId)">
+                        ✏️ 编辑
+                    </button>
+                    <button class="btn btn-danger" data-config-id="${config.id}" onclick="ddnsApp.deleteDDNS(this.dataset.configId, this)">
+                        🗑️ 删除
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    formatInterval(seconds) {
+        if (seconds < 60) return `${seconds}秒`;
+        if (seconds < 3600) return `${Math.floor(seconds / 60)}分钟`;
+        if (seconds < 86400) return `${Math.floor(seconds / 3600)}小时`;
+        return `${Math.floor(seconds / 86400)}天`;
+    }
+
+    updateFullDomainPreview() {
+        const domainSelect = document.getElementById('ddnsDomain');
+        const subdomainInput = document.getElementById('ddnsSubdomain');
+        const previewSpan = document.getElementById('domainPreview');
+        
+        if (!domainSelect || !subdomainInput || !previewSpan) return;
+        
+        const selectedDomain = domainSelect.value;
+        const subdomain = subdomainInput.value.trim();
+        
+        if (selectedDomain && subdomain) {
+            // 从选项文本中提取域名（去掉服务商名称）
+            const optionText = domainSelect.options[domainSelect.selectedIndex].text;
+            const domainName = optionText.split(' (')[0]; // 去掉服务商名称部分
+            previewSpan.textContent = `.${domainName}`;
+            previewSpan.style.color = '#333';
+        } else if (selectedDomain) {
+            const optionText = domainSelect.options[domainSelect.selectedIndex].text;
+            const domainName = optionText.split(' (')[0];
+            previewSpan.textContent = `.${domainName}`;
+            previewSpan.style.color = '#999';
+        } else {
+            previewSpan.textContent = '';
+        }
+    }
+
+    async loadDomainSelect() {
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch('/api/domains/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const domains = await response.json();
+            
+            const select = document.getElementById('ddnsDomain');
+            select.innerHTML = '<option value="">请选择域名</option>';
+            
+            domains.forEach(domain => {
+                const option = document.createElement('option');
+                option.value = domain.id;
+                option.textContent = `${domain.name} (${domain.provider.name})`;
+                select.appendChild(option);
+            });
+        } catch (error) {
+            this.showAlert('ddns-alert', '加载域名列表失败: ' + error.message, 'error');
+        }
+    }
+
+    async showDDNSModal(configId = null) {
+        this.currentConfigId = configId;
+        
+        await this.loadDomainSelect();
+        
+        const modal = document.getElementById('ddnsModal');
+        const title = document.getElementById('ddnsModalTitle');
+        const form = document.getElementById('ddnsForm');
+
+        if (configId) {
+            title.textContent = '编辑DDNS配置';
+            await this.loadDDNSData(configId);
+        } else {
+            title.textContent = '添加DDNS配置';
+            form.reset();
+            document.getElementById('ddnsEnabled').checked = true;
+        }
+
+        modal.style.display = 'block';
+        
+        // 初始化域名预览
+        setTimeout(() => {
+            this.updateFullDomainPreview();
+        }, 100);
+    }
+
+    async loadDDNSData(configId) {
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch(`/api/ddns/${configId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const config = await response.json();
+
+            document.getElementById('ddnsName').value = config.name;
+            document.getElementById('ddnsDomain').value = config.domain_id;
+            
+            // 提取子域名前缀（去掉主域名部分）
+            const domainName = config.domain.name;
+            let subdomainPrefix = config.subdomain;
+            if (subdomainPrefix.endsWith(`.${domainName}`)) {
+                subdomainPrefix = subdomainPrefix.replace(`.${domainName}`, '');
+            }
+            document.getElementById('ddnsSubdomain').value = subdomainPrefix;
+            
+            document.getElementById('ddnsRecordType').value = config.record_type;
+            document.getElementById('ddnsUpdateInterval').value = config.update_interval;
+            document.getElementById('ddnsUpdateMethod').value = config.update_method;
+            document.getElementById('ddnsEnabled').checked = config.enabled;
+            
+            // 更新域名预览
+            setTimeout(() => {
+                this.updateFullDomainPreview();
+            }, 100);
+        } catch (error) {
+            this.showAlert('ddns-alert', '加载DDNS配置失败: ' + error.message, 'error');
+        }
+    }
+
+    closeDDNSModal() {
+        document.getElementById('ddnsModal').style.display = 'none';
+        this.currentConfigId = null;
+    }
+
+    async handleDDNSSubmit(e) {
+        e.preventDefault();
+
+        // 通过form属性找到提交按钮
+        const submitButton = document.querySelector('button[form="ddnsForm"]');
+        if (submitButton) {
+            // 显示按钮加载动画
+            this.showLoadingSpinner(submitButton, '保存中...');
+        }
+
+        // 构建完整域名
+        const domainSelect = document.getElementById('ddnsDomain');
+        const subdomainInput = document.getElementById('ddnsSubdomain').value.trim();
+        const optionText = domainSelect.options[domainSelect.selectedIndex].text;
+        const domainName = optionText.split(' (')[0]; // 去掉服务商名称部分
+        const fullSubdomain = `${subdomainInput}.${domainName}`;
+
+        const formData = {
+            name: document.getElementById('ddnsName').value,
+            domain_id: parseInt(document.getElementById('ddnsDomain').value),
+            subdomain: fullSubdomain,
+            record_type: parseInt(document.getElementById('ddnsRecordType').value),
+            update_interval: parseInt(document.getElementById('ddnsUpdateInterval').value),
+            update_method: document.getElementById('ddnsUpdateMethod').value,
+            enabled: document.getElementById('ddnsEnabled').checked
+        };
+
+        try {
+            const token = localStorage.getItem('access_token');
+            const url = this.currentConfigId ? `/api/ddns/${this.currentConfigId}` : '/api/ddns/';
+            const method = this.currentConfigId ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(formData)
+            });
+
+            if (response.ok) {
+                this.showAlert('ddns-alert', '保存成功', 'success');
+                this.closeDDNSModal();
+                this.loadDDNSConfigs();
+            } else {
+                const error = await response.json();
+                this.showAlert('ddns-alert', '保存失败: ' + error.detail, 'error');
+            }
+        } catch (error) {
+            this.showAlert('ddns-alert', '保存失败: ' + error.message, 'error');
+        } finally {
+            // 隐藏按钮加载动画
+            const submitButton = document.querySelector('button[form="ddnsForm"]');
+            if (submitButton) {
+                this.hideLoadingSpinner(submitButton);
+            }
+        }
+    }
+
+    async updateDDNS(configId, buttonElement = null) {
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await this.apiCall(`/api/ddns/${configId}/update`, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            }, buttonElement, '更新中...');
+
+            if (response.ok) {
+                const result = await response.json();
+                this.showAlert('ddns-alert', result.message, 'success');
+                this.loadDDNSConfigs();
+            } else {
+                const error = await response.json();
+                this.showAlert('ddns-alert', '更新失败: ' + error.detail, 'error');
+            }
+        } catch (error) {
+            this.showAlert('ddns-alert', '更新失败: ' + error.message, 'error');
+        }
+    }
+
+    async updateAllDDNS(buttonElement = null) {
+        if (!confirm('确定要批量更新所有启用的DDNS配置吗？')) return;
+
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await this.apiCall('/api/ddns/update-all', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            }, buttonElement, '批量更新中...');
+
+            if (response.ok) {
+                const result = await response.json();
+                this.showAlert('ddns-alert', result.message, 'success');
+                this.loadDDNSConfigs();
+            } else {
+                const error = await response.json();
+                this.showAlert('ddns-alert', '批量更新失败: ' + error.detail, 'error');
+            }
+        } catch (error) {
+            this.showAlert('ddns-alert', '批量更新失败: ' + error.message, 'error');
+        }
+    }
+
+    async showStatusSummary() {
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch('/api/ddns/status/summary', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const status = await response.json();
+            
+            let statusText = 'DDNS状态概览:\n\n';
+            statusText += `总配置数: ${status.total_configs}\n`;
+            statusText += `启用配置: ${status.enabled_configs}\n`;
+            statusText += `禁用配置: ${status.disabled_configs}\n`;
+            statusText += `24小时内成功更新: ${status.recent_updates}\n`;
+            statusText += `24小时内更新失败: ${status.recent_failures}\n`;
+            statusText += `检查时间: ${new Date(status.last_check).toLocaleString()}`;
+            
+            alert(statusText);
+        } catch (error) {
+            this.showAlert('ddns-alert', '获取状态概览失败: ' + error.message, 'error');
+        }
+    }
+
+    async viewDDNSLogs(configId, configName) {
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await fetch(`/api/ddns/${configId}/logs?page=1&page_size=20`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await response.json();
+            
+            this.showDDNSLogsModal(configName, data, configId);
+        } catch (error) {
+            this.showAlert('ddns-alert', '获取DDNS日志失败: ' + error.message, 'error');
+        }
+    }
+
+    showDDNSLogsModal(configName, data, configId) {
+        const logs = data.logs;
+        const pagination = data.pagination;
+        
+        let logsHtml = '';
+        if (logs.length === 0) {
+            logsHtml = '<p style="text-align: center; color: #666;">暂无更新日志</p>';
+        } else {
+            logsHtml = `
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th style="text-align: center;">时间</th>
+                                <th style="text-align: center;">旧IP</th>
+                                <th style="text-align: center;">新IP</th>
+                                <th style="text-align: center;">状态</th>
+                                <th style="text-align: center;">消息</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            logs.forEach(log => {
+                const statusClass = log.status === 'success' ? 'enabled' : 'disabled';
+                const statusText = log.status === 'success' ? '成功' : '失败';
+                logsHtml += `
+                    <tr>
+                        <td style="text-align: center; vertical-align: middle;">${new Date(log.created_at).toLocaleString()}</td>
+                        <td style="text-align: center; vertical-align: middle;">${log.old_ip || '-'}</td>
+                        <td style="text-align: center; vertical-align: middle;">${log.new_ip || '-'}</td>
+                        <td style="text-align: center; vertical-align: middle;"><span class="status ${statusClass}">${statusText}</span></td>
+                        <td style="text-align: center; vertical-align: middle;">${log.message}</td>
+                    </tr>
+                `;
+            });
+            
+            logsHtml += '</tbody></table></div>';
+        }
+
+        const modalContent = `
+            <div class="modal" id="ddnsLogsModal" style="display: block;">
+                <div class="modal-content" style="max-width: 90vw; max-height: 80vh;">
+                    <div class="modal-header">
+                        <h3>DDNS更新日志 - ${configName}</h3>
+                        <span class="close" onclick="ddnsApp.closeDDNSLogsModal()">&times;</span>
+                    </div>
+                    <div class="modal-body" style="overflow-y: auto;">
+                        ${logsHtml}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalContent);
+    }
+
+    closeDDNSLogsModal() {
+        const modal = document.getElementById('ddnsLogsModal');
+        if (modal) {
+            modal.remove();
+        }
+    }
+
+    editDDNS(configId) {
+        this.showDDNSModal(configId);
+    }
+
+    async deleteDDNS(configId, buttonElement = null) {
+        if (!confirm('确定要删除这个DDNS配置吗？')) return;
+
+        try {
+            const token = localStorage.getItem('access_token');
+            const response = await this.apiCall(`/api/ddns/${configId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            }, buttonElement, '删除中...');
+
+            if (response.ok) {
+                this.showAlert('ddns-alert', '删除成功', 'success');
+                this.loadDDNSConfigs();
+            } else {
+                const error = await response.json();
+                this.showAlert('ddns-alert', '删除失败: ' + error.detail, 'error');
+            }
+        } catch (error) {
+            this.showAlert('ddns-alert', '删除失败: ' + error.message, 'error');
+        }
+    }
+
+    // 工具方法
+    showAlert(containerId, message, type) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = `<div class="alert alert-${type}">${message}</div>`;
+
+        setTimeout(() => {
+            container.innerHTML = '';
+        }, 3000);
+    }
+
+    closeModal(modal) {
+        modal.style.display = 'none';
+    }
+
+    showLoadingSpinner(button, text = '处理中...') {
+        button.dataset.originalText = button.textContent;
+        button.dataset.originalDisabled = button.disabled;
+        
+        button.disabled = true;
+        button.innerHTML = `
+            <span style="display: inline-block; width: 16px; height: 16px; margin-right: 8px;">
+                <svg style="animation: spin 1s linear infinite; width: 16px; height: 16px;" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" opacity="0.25"/>
+                    <path d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"/>
+                </svg>
+            </span>
+            ${text}
+        `;
+    }
+
+    hideLoadingSpinner(button) {
+        if (button.dataset.originalText) {
+            button.textContent = button.dataset.originalText;
+            button.disabled = button.dataset.originalDisabled === 'true';
+            delete button.dataset.originalText;
+            delete button.dataset.originalDisabled;
+        }
+    }
+
+    showGlobalLoading(text = '处理中...') {
+        // 创建全局加载遮罩层
+        const overlay = document.createElement('div');
+        overlay.id = 'globalLoadingOverlay';
+        overlay.className = 'global-loading-overlay';
+        overlay.innerHTML = `
+            <div class="global-loading-content">
+                <div class="global-loading-spinner"></div>
+                <div class="global-loading-text">${text}</div>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+
+    hideGlobalLoading() {
+        const overlay = document.getElementById('globalLoadingOverlay');
+        if (overlay) {
+            overlay.remove();
+        }
+    }
+
+    async apiCall(url, options = {}, buttonElement = null, loadingText = '处理中...') {
+        if (buttonElement) {
+            this.showLoadingSpinner(buttonElement, loadingText);
+        }
+
+        try {
+            const response = await fetch(url, options);
+            return response;
+        } finally {
+            if (buttonElement) {
+                this.hideLoadingSpinner(buttonElement);
+            }
+        }
+    }
+}
+
+// 检查认证状态
+function checkAuth() {
+    const token = localStorage.getItem('access_token');
+    if (!token) {
+        window.location.href = '/login';
+        return false;
+    }
+    return true;
+}
+
+// 切换侧边栏显示/隐藏
+function toggleSidebar() {
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('open');
+    }
+}
+
+// 导出 DDNSManager 类
+window.DDNSManager = DDNSManager;
+
+// 全局变量
+let ddnsApp;
+
+// 初始化应用
+document.addEventListener('DOMContentLoaded', function() {
+    if (!checkAuth()) return;
+    
+    // 初始化DDNS管理器
+    ddnsApp = new DDNSManager();
+    window.ddnsApp = ddnsApp;
+    
+    // 创建侧边栏
+    const sidebar = new Sidebar();
+    
+    // 延迟设置DDNS为当前活跃页面
+    setTimeout(() => {
+        const ddnsNavItem = document.querySelector('[href="/ddns"]');
+        if (ddnsNavItem) {
+            // 清除其他活跃状态
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            // 设置当前页面为活跃
+            ddnsNavItem.classList.add('active');
+        }
+    }, 100);
+});

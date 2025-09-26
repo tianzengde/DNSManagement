@@ -1,0 +1,47 @@
+/* DDNS设置页面专用样式 */
+
+/* DDNS弹窗布局优化 */
+#ddnsModal .modal-content {
+    max-height: 85vh;
+    margin: 7.5vh auto;
+    display: flex;
+    flex-direction: column;
+}
+
+#ddnsModal .modal-header {
+    flex-shrink: 0;
+}
+
+#ddnsModal .modal-body {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem 0;
+}
+
+#ddnsModal .modal-footer {
+    flex-shrink: 0;
+    border-top: 1px solid #eee;
+    padding-top: 1rem;
+    margin-top: 1rem;
+}
+
+/* 强制设置主域名预览为黑色 */
+#ddnsModal #domainPreview {
+    color: #000 !important;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+    #ddnsModal .modal-content {
+        max-height: 90vh;
+        margin: 5vh auto;
+    }
+}
+
+@media (max-width: 480px) {
+    #ddnsModal .modal-content {
+        max-height: 85vh;
+        margin: 7.5vh auto;
+    }
+}
