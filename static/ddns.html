@@ -458,8 +458,10 @@
             async handleDDNSSubmit(e) {
                 e.preventDefault();
 
-                const submitButton = e.target.querySelector('button[type="submit"]');
+                // 通过form属性找到提交按钮
+                const submitButton = document.querySelector('button[form="ddnsForm"]');
                 if (submitButton) {
+                    // 显示按钮加载动画
                     this.showLoadingSpinner(submitButton, '保存中...');
                 }
 
@@ -505,6 +507,8 @@
                 } catch (error) {
                     this.showAlert('ddns-alert', '保存失败: ' + error.message, 'error');
                 } finally {
+                    // 隐藏按钮加载动画
+                    const submitButton = document.querySelector('button[form="ddnsForm"]');
                     if (submitButton) {
                         this.hideLoadingSpinner(submitButton);
                     }
@@ -727,6 +731,27 @@
                     button.disabled = button.dataset.originalDisabled === 'true';
                     delete button.dataset.originalText;
                     delete button.dataset.originalDisabled;
+                }
+            }
+
+            showGlobalLoading(text = '处理中...') {
+                // 创建全局加载遮罩层
+                const overlay = document.createElement('div');
+                overlay.id = 'globalLoadingOverlay';
+                overlay.className = 'global-loading-overlay';
+                overlay.innerHTML = `
+                    <div class="global-loading-content">
+                        <div class="global-loading-spinner"></div>
+                        <div class="global-loading-text">${text}</div>
+                    </div>
+                `;
+                document.body.appendChild(overlay);
+            }
+
+            hideGlobalLoading() {
+                const overlay = document.getElementById('globalLoadingOverlay');
+                if (overlay) {
+                    overlay.remove();
                 }
             }
 
