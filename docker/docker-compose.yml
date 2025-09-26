@@ -1,0 +1,49 @@
+version: '3.8'
+
+services:
+  dns-management:
+    build: .
+    container_name: dns-management
+    ports:
+      - "8000:8000"
+    volumes:
+      # 数据持久化
+      - ./data:/app/data
+      # certbot配置持久化
+      - ./letsencrypt:/etc/letsencrypt
+      - ./letsencrypt-lib:/var/lib/letsencrypt
+      - ./letsencrypt-log:/var/log/letsencrypt
+    environment:
+      # 应用配置
+      - DNS_HOST=0.0.0.0
+      - DNS_PORT=8000
+      - DNS_DEBUG=false
+      - DNS_LOG_LEVEL=INFO
+      
+      # 数据库配置
+      - DNS_DATABASE_URL=sqlite://./data/dns_management.db
+      
+      # 安全配置
+      - DNS_JWT_SECRET_KEY=your-jwt-secret-key-change-in-production
+      
+      # 证书配置
+      - CERTIFICATE_CERTIFICATE_EMAIL=admin@example.com
+      - CERTIFICATE_CERTBOT_CONFIG_DIR=/etc/letsencrypt
+      - CERTIFICATE_CERTBOT_WORK_DIR=/var/lib/letsencrypt
+      - CERTIFICATE_CERTBOT_LOGS_DIR=/var/log/letsencrypt
+      - CERTIFICATE_CERTIFICATE_STORAGE_PATH=/app/data/certificates
+      
+      # 定时任务配置
+      - DNS_SCHEDULER_TIMEZONE=Asia/Shanghai
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/auth/dashboard-stats"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # 如果需要管理员权限运行certbot，可以取消注释下面的行
+    # privileged: true
+    # 或者使用cap_add来添加特定权限
+    cap_add:
+      - NET_ADMIN
