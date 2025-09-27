@@ -1,5 +1,5 @@
 /**
- * DDNS设置页面管理器
+ * DDNS设置页面管理器 - v2.0
  */
 class DDNSManager {
     constructor() {
@@ -469,25 +469,36 @@ class DDNSManager {
         }
     }
 
-    async viewDDNSLogs(configId, configName) {
+    async viewDDNSLogs(configId, configName, page = 1) {
         try {
             const token = localStorage.getItem('access_token');
-            const response = await fetch(`/api/ddns/${configId}/logs?page=1&page_size=20`, {
+            const url = `/api/ddns/${configId}/logs?page=${page}&page_size=5&v=${Date.now()}`;
+            console.log('DDNS Logs API URL:', url);
+            
+            const response = await fetch(url, {
                 headers: {
                     'Authorization': `Bearer ${token}`
                 }
             });
             const data = await response.json();
             
-            this.showDDNSLogsModal(configName, data, configId);
+            console.log('DDNS Logs API Response:', data);
+            this.showDDNSLogsModal(configName, data, configId, page);
         } catch (error) {
+            console.error('DDNS Logs API Error:', error);
             this.showAlert('ddns-alert', '获取DDNS日志失败: ' + error.message, 'error');
         }
     }
 
-    showDDNSLogsModal(configName, data, configId) {
+    showDDNSLogsModal(configName, data, configId, currentPage = 1) {
         const logs = data.logs;
         const pagination = data.pagination;
+        
+        // 调试信息
+        console.log('DDNS Logs Data:', data);
+        console.log('Pagination:', pagination);
+        console.log('Logs count:', logs ? logs.length : 'undefined');
+        
         
         let logsHtml = '';
         if (logs.length === 0) {
@@ -525,20 +536,79 @@ class DDNSManager {
             logsHtml += '</tbody></table></div>';
         }
 
+        // 分页HTML - 参考域名管理的分页样式
+        let paginationHtml = '';
+        console.log('Pagination check:', pagination, 'total:', pagination ? pagination.total : 'undefined');
+        if (pagination && pagination.total > 0) {
+            const showNavigation = pagination.total_pages > 1;
+            paginationHtml = `
+                <div class="pagination-container" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #eee;">
+                    <div class="pagination-buttons" style="display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        ${showNavigation ? `
+                        <button class="btn btn-sm btn-secondary" 
+                                onclick="ddnsApp.viewDDNSLogs('${configId}', '${configName.replace(/'/g, '&apos;').replace(/"/g, '&quot;')}', 1)" 
+                                ${currentPage === 1 ? 'disabled' : ''} 
+                                style="min-width: 60px;">首页</button>
+                        <button class="btn btn-sm btn-secondary" 
+                                onclick="ddnsApp.viewDDNSLogs('${configId}', '${configName.replace(/'/g, '&apos;').replace(/"/g, '&quot;')}', ${currentPage - 1})" 
+                                ${!pagination.has_prev ? 'disabled' : ''} 
+                                style="min-width: 70px;">上一页</button>
+                        ` : ''}
+                        <span style="margin: 0 1rem; color: #666; white-space: nowrap;">第 ${currentPage} 页 / 共 ${pagination.total_pages} 页 (总计 ${pagination.total} 条记录)</span>
+                        ${showNavigation ? `
+                        <button class="btn btn-sm btn-secondary" 
+                                onclick="ddnsApp.viewDDNSLogs('${configId}', '${configName.replace(/'/g, '&apos;').replace(/"/g, '&quot;')}', ${currentPage + 1})" 
+                                ${!pagination.has_next ? 'disabled' : ''} 
+                                style="min-width: 70px;">下一页</button>
+                        <button class="btn btn-sm btn-secondary" 
+                                onclick="ddnsApp.viewDDNSLogs('${configId}', '${configName.replace(/'/g, '&apos;').replace(/"/g, '&quot;')}', ${pagination.total_pages})" 
+                                ${currentPage === pagination.total_pages ? 'disabled' : ''} 
+                                style="min-width: 60px;">末页</button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+
         const modalContent = `
             <div class="modal" id="ddnsLogsModal" style="display: block;">
-                <div class="modal-content" style="max-width: 90vw; max-height: 80vh;">
-                    <div class="modal-header">
+                <div class="modal-content" style="max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column;">
+                    <div class="modal-header" style="flex-shrink: 0; border-bottom: 1px solid #eee; padding-bottom: 1rem;">
                         <h3>DDNS更新日志 - ${configName}</h3>
                         <span class="close" onclick="ddnsApp.closeDDNSLogsModal()">&times;</span>
                     </div>
-                    <div class="modal-body" style="overflow-y: auto;">
-                        ${logsHtml}
+                    <div class="modal-body" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 1rem 0;">
+                        <div class="logs-table-container" style="flex: 1; overflow-y: auto; margin-bottom: 1rem;">
+                            ${logsHtml}
+                        </div>
+                        ${paginationHtml}
                     </div>
                 </div>
             </div>
         `;
         
+        console.log('Generated pagination HTML:', paginationHtml);
+        
+        // 检查是否已存在模态框
+        const existingModal = document.getElementById('ddnsLogsModal');
+        if (existingModal) {
+            // 如果模态框已存在，只更新内容，不重新创建
+            const tableContainer = existingModal.querySelector('.logs-table-container');
+            const paginationContainer = existingModal.querySelector('.pagination-container');
+            
+            if (tableContainer) {
+                tableContainer.innerHTML = logsHtml;
+            }
+            if (paginationContainer) {
+                paginationContainer.innerHTML = paginationHtml.replace(/<div class="pagination-container[^>]*>/, '').replace(/<\/div>$/, '');
+            } else if (paginationHtml) {
+                // 如果分页容器不存在但有分页内容，添加它
+                existingModal.querySelector('.modal-body').insertAdjacentHTML('beforeend', paginationHtml);
+            }
+            return;
+        }
+        
+        // 创建新的模态框（只在第一次时）
         document.body.insertAdjacentHTML('beforeend', modalContent);
     }
 

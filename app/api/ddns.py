@@ -328,7 +328,7 @@ async def delete_ddns_config(config_id: str):
 async def get_ddns_logs(
     config_id: str,
     page: int = Query(1, ge=1, description="页码"),
-    page_size: int = Query(10, ge=1, le=100, description="每页记录数")
+    page_size: int = Query(5, ge=1, le=100, description="每页记录数")
 ):
     """获取DDNS更新日志"""
     config = await DDNSConfig.get_or_none(id=config_id)
@@ -347,8 +347,21 @@ async def get_ddns_logs(
     # 计算总页数
     total_pages = (total + page_size - 1) // page_size
     
+    # 将日志对象转换为字典格式
+    logs_data = []
+    for log in logs:
+        logs_data.append({
+            "id": log.id,
+            "ddns_config_id": str(log.ddns_config_id),
+            "old_ip": log.old_ip,
+            "new_ip": log.new_ip,
+            "status": log.status,
+            "message": log.message,
+            "created_at": log.created_at.isoformat()
+        })
+    
     return {
-        "logs": logs,
+        "logs": logs_data,
         "pagination": {
             "page": page,
             "page_size": page_size,
