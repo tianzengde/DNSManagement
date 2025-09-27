@@ -103,9 +103,6 @@ class ProvidersManager {
                     <button class="btn btn-info" onclick="providersApp.testProviderConnection(${provider.id}, this)">
                         🔍 测试
                     </button>
-                    <button class="btn btn-success" onclick="providersApp.syncProviderDomains(${provider.id}, this)">
-                        🔄 同步
-                    </button>
                     <button class="btn btn-secondary" onclick="providersApp.editProvider(${provider.id})">
                         ✏️ 编辑
                     </button>
@@ -281,62 +278,6 @@ class ProvidersManager {
         }
     }
 
-    async syncProviderDomains(providerId, buttonElement = null) {
-        try {
-            const response = await this.apiCall(`/api/providers/${providerId}/sync`, {
-                method: 'POST'
-            }, buttonElement, '同步中...');
-
-            if (response.ok) {
-                const result = await response.json();
-                this.showAlert('providers-alert', result.message, 'success');
-            } else {
-                const error = await response.json();
-                this.showAlert('providers-alert', '同步失败: ' + error.detail, 'error');
-            }
-        } catch (error) {
-            this.showAlert('providers-alert', '同步失败: ' + error.message, 'error');
-        }
-    }
-
-    async syncAllProviders(buttonElement = null) {
-        if (!confirm('确定要同步所有服务商的域名吗？这可能需要一些时间。')) return;
-
-        try {
-            // 显示加载动画
-            if (buttonElement) {
-                this.showLoadingSpinner(buttonElement, '同步中...');
-            }
-
-            const response = await fetch('/api/providers/');
-            const providers = await response.json();
-            
-            const enabledProviders = providers.filter(p => p.enabled);
-            let syncCount = 0;
-            
-            for (const provider of enabledProviders) {
-                try {
-                    await this.syncProviderDomains(provider.id);
-                    syncCount++;
-                } catch (error) {
-                    console.error(`同步服务商 ${provider.name} 失败:`, error);
-                }
-            }
-            
-            this.showAlert('providers-alert', `批量同步完成，成功同步 ${syncCount} 个服务商`, 'success');
-        } catch (error) {
-            this.showAlert('providers-alert', '批量同步失败: ' + error.message, 'error');
-        } finally {
-            if (buttonElement) {
-                this.hideLoadingSpinner(buttonElement);
-            }
-        }
-    }
-
-    showSyncStatus() {
-        // 显示同步状态概览
-        alert('同步状态功能待实现');
-    }
 
     // 工具方法
     showAlert(containerId, message, type) {
