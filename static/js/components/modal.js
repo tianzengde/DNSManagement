@@ -94,7 +94,7 @@ class ModalUtils {
                 </div>
                 <div class="form-group">
                     <label for="providerType">服务商类型</label>
-                    <select id="providerType" required>
+                    <select id="providerType" required onchange="showProviderHelp(this.value)">
                         <option value="">请选择</option>
                         <option value="1">华为云</option>
                         <option value="2">阿里云</option>
@@ -102,6 +102,16 @@ class ModalUtils {
                         <option value="4">Cloudflare</option>
                     </select>
                     <!-- v2.0 - 添加腾讯云和Cloudflare支持 -->
+                </div>
+                
+                <!-- 服务商帮助信息 -->
+                <div id="providerHelp" class="provider-help" style="display: none;">
+                    <div class="help-content">
+                        <h4 id="helpTitle">获取密钥说明</h4>
+                        <div id="helpContent">
+                            <!-- 动态内容 -->
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="providerAccessKey">访问密钥</label>

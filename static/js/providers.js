@@ -340,6 +340,122 @@ class ProvidersManager {
         alert('同步状态功能待实现');
     }
 
+    // 显示服务商帮助信息
+    showProviderHelp(providerType) {
+        const helpDiv = document.getElementById('providerHelp');
+        const helpTitle = document.getElementById('helpTitle');
+        const helpContent = document.getElementById('helpContent');
+        
+        if (!providerType) {
+            helpDiv.style.display = 'none';
+            return;
+        }
+        
+        const helpData = this.getProviderHelpData(providerType);
+        helpTitle.textContent = helpData.title;
+        helpContent.innerHTML = helpData.content;
+        helpDiv.style.display = 'block';
+    }
+
+    getProviderHelpData(providerType) {
+        const helpData = {
+            '1': {
+                title: '华为云密钥获取说明',
+                content: `
+                    <div class="help-steps">
+                        <h5>📋 获取步骤：</h5>
+                        <ol>
+                            <li>登录 <a href="https://console.huaweicloud.com/" target="_blank">华为云控制台</a></li>
+                            <li>访问 <a href="https://console.huaweicloud.com/iam/#/mine/apiCredential" target="_blank">API凭证管理</a></li>
+                            <li>创建访问密钥，获取 Access Key ID 和 Secret Access Key</li>
+                            <li>确保账号有 DNS 解析权限</li>
+                        </ol>
+                        <div class="help-note">
+                            <strong>💡 提示：</strong>
+                            <ul>
+                                <li>访问密钥：Access Key ID</li>
+                                <li>秘密密钥：Secret Access Key</li>
+                                <li>区域：如 cn-north-4（可选）</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            '2': {
+                title: '阿里云密钥获取说明',
+                content: `
+                    <div class="help-steps">
+                        <h5>📋 获取步骤：</h5>
+                        <ol>
+                            <li>登录 <a href="https://ecs.console.aliyun.com/" target="_blank">阿里云控制台</a></li>
+                            <li>访问 <a href="https://usercenter.console.aliyun.com/#/manage/ak" target="_blank">AccessKey管理</a></li>
+                            <li>创建AccessKey，获取 Access Key ID 和 Access Key Secret</li>
+                            <li>确保账号有 DNS 解析权限</li>
+                        </ol>
+                        <div class="help-note">
+                            <strong>💡 提示：</strong>
+                            <ul>
+                                <li>访问密钥：Access Key ID</li>
+                                <li>秘密密钥：Access Key Secret</li>
+                                <li>区域：DNS服务为全局服务（可选）</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            '3': {
+                title: '腾讯云密钥获取说明',
+                content: `
+                    <div class="help-steps">
+                        <h5>📋 获取步骤：</h5>
+                        <ol>
+                            <li>登录 <a href="https://console.cloud.tencent.com/" target="_blank">腾讯云控制台</a></li>
+                            <li>访问 <a href="https://console.cloud.tencent.com/cam/capi" target="_blank">API密钥管理</a></li>
+                            <li>创建API密钥，获取 SecretId 和 SecretKey</li>
+                            <li>确保账号有 DNS 解析权限</li>
+                        </ol>
+                        <div class="help-note">
+                            <strong>💡 提示：</strong>
+                            <ul>
+                                <li>访问密钥：SecretId</li>
+                                <li>秘密密钥：SecretKey</li>
+                                <li>区域：如 ap-beijing（可选）</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            },
+            '4': {
+                title: 'Cloudflare密钥获取说明',
+                content: `
+                    <div class="help-steps">
+                        <h5>📋 获取步骤：</h5>
+                        <ol>
+                            <li>登录 <a href="https://dash.cloudflare.com/" target="_blank">Cloudflare控制台</a></li>
+                            <li>访问 <a href="https://dash.cloudflare.com/profile/api-tokens" target="_blank">API Tokens</a></li>
+                            <li>创建自定义Token，权限设置为：</li>
+                            <ul>
+                                <li>Zone:Zone:Read</li>
+                                <li>Zone:DNS:Edit</li>
+                            </ul>
+                            <li>将Token作为访问密钥，邮箱作为秘密密钥</li>
+                        </ol>
+                        <div class="help-note">
+                            <strong>💡 提示：</strong>
+                            <ul>
+                                <li>访问密钥：API Token</li>
+                                <li>秘密密钥：邮箱地址（可选）</li>
+                                <li>区域：不需要</li>
+                            </ul>
+                        </div>
+                    </div>
+                `
+            }
+        };
+        
+        return helpData[providerType] || { title: '未知服务商', content: '请选择有效的服务商类型' };
+    }
+
 
     // 工具方法
     showAlert(containerId, message, type) {
@@ -428,6 +544,13 @@ function toggleSidebar() {
 
 // 导出 ProvidersManager 类
 window.ProvidersManager = ProvidersManager;
+
+// 全局函数，供HTML调用
+window.showProviderHelp = function(providerType) {
+    if (window.providersApp) {
+        window.providersApp.showProviderHelp(providerType);
+    }
+};
 
 // 初始化应用
 document.addEventListener('DOMContentLoaded', function() {

@@ -406,11 +406,13 @@ input:checked + .slider:before {
 
 .modal-content {
     background: white;
-    margin: 5% auto;
+    margin: 2% auto;
     padding: 2rem;
     border-radius: 15px;
     width: 90%;
     max-width: 500px;
+    max-height: 90vh;
+    overflow-y: auto;
     box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
     animation: modalSlideIn 0.3s ease;
 }

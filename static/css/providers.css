@@ -62,3 +62,131 @@
     }
     
 }
+
+/* 服务商帮助信息样式 */
+.provider-help {
+    margin: 0.75rem 0;
+    padding: 0.75rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.help-content h4 {
+    margin: 0 0 0.75rem 0;
+    color: #495057;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.help-steps h5 {
+    margin: 0 0 0.4rem 0;
+    color: #6c757d;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.help-steps ol {
+    margin: 0.4rem 0 0.75rem 0;
+    padding-left: 1.2rem;
+}
+
+.help-steps li {
+    margin: 0.25rem 0;
+    color: #495057;
+    line-height: 1.5;
+}
+
+.help-steps a {
+    color: #007bff;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.help-steps a:hover {
+    color: #0056b3;
+    text-decoration: underline;
+}
+
+.help-note {
+    background: #fff3cd;
+    border: 1px solid #ffeaa7;
+    border-radius: 6px;
+    padding: 0.6rem;
+    margin-top: 0.75rem;
+}
+
+.help-note strong {
+    color: #856404;
+}
+
+.help-note ul {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.5rem;
+}
+
+.help-note li {
+    color: #856404;
+    margin: 0.25rem 0;
+}
+
+/* 动画效果 */
+.provider-help {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 响应式优化 - 帮助信息 */
+@media (max-width: 768px) {
+    .provider-help {
+        margin: 0.5rem 0;
+        padding: 0.6rem;
+    }
+    
+    .help-content h4 {
+        font-size: 0.95rem;
+        margin: 0 0 0.6rem 0;
+    }
+    
+    .help-steps h5 {
+        font-size: 0.85rem;
+    }
+    
+    .help-steps ol {
+        padding-left: 1rem;
+    }
+    
+    .help-steps li {
+        font-size: 0.9rem;
+        margin: 0.2rem 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .provider-help {
+        padding: 0.5rem;
+    }
+    
+    .help-content h4 {
+        font-size: 0.9rem;
+    }
+    
+    .help-steps h5 {
+        font-size: 0.8rem;
+    }
+    
+    .help-steps li {
+        font-size: 0.85rem;
+    }
+}
