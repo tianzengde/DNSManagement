@@ -133,10 +133,14 @@ class DomainSyncService:
             for record_data in records_data:
                 record_name = record_data.get('name', '').rstrip('.')
                 record_type = self._get_record_type(record_data.get('type', ''))
-                record_value = record_data.get('records', [])
+                # 阿里云返回的是 'value' 字段，华为云可能返回 'records' 字段
+                record_value = record_data.get('value') or record_data.get('records', [])
                 external_id = record_data.get('id', '')
                 
+                logger.debug(f"处理DNS记录: name={record_name}, type={record_type}, value={record_value}, external_id={external_id}")
+                
                 if not record_name or not record_type or not record_value:
+                    logger.warning(f"跳过无效记录: name={record_name}, type={record_type}, value={record_value}")
                     continue
                 
                 # 合并多个记录值
