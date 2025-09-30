@@ -21,7 +21,6 @@ class CloudflareProvider(BaseProvider):
         return {
             "Authorization": f"Bearer {self.api_token}",
             "Content-Type": "application/json",
-            "X-Auth-Email": self.email if self.email else "",
         }
     
     async def get_domains(self) -> List[Dict[str, Any]]:
@@ -38,8 +37,14 @@ class CloudflareProvider(BaseProvider):
             data = response.json()
             
             if not data.get("success"):
+                messages = data.get("messages", [])
                 errors = data.get("errors", [])
-                error_msg = "; ".join([error.get("message", "未知错误") for error in errors])
+                if messages:
+                    error_msg = ", ".join(messages)
+                elif errors:
+                    error_msg = ", ".join([error.get("message", "未知错误") for error in errors])
+                else:
+                    error_msg = "未知错误"
                 raise Exception(f"Cloudflare API错误: {error_msg}")
             
             zones = data.get("result", [])
@@ -78,8 +83,14 @@ class CloudflareProvider(BaseProvider):
             data = response.json()
             
             if not data.get("success"):
+                messages = data.get("messages", [])
                 errors = data.get("errors", [])
-                error_msg = "; ".join([error.get("message", "未知错误") for error in errors])
+                if messages:
+                    error_msg = ", ".join(messages)
+                elif errors:
+                    error_msg = ", ".join([error.get("message", "未知错误") for error in errors])
+                else:
+                    error_msg = "未知错误"
                 raise Exception(f"Cloudflare API错误: {error_msg}")
             
             records = data.get("result", [])
@@ -114,7 +125,8 @@ class CloudflareProvider(BaseProvider):
             "type": record["type"],
             "name": record["name"],
             "content": record["value"],
-            "ttl": record.get("ttl", 1)
+            "ttl": record.get("ttl", 1),
+            "proxied": False  # 默认不启用CDN代理
         }
         
         if record.get("priority"):
@@ -131,8 +143,14 @@ class CloudflareProvider(BaseProvider):
             
             data = response.json()
             if not data.get("success"):
+                messages = data.get("messages", [])
                 errors = data.get("errors", [])
-                error_msg = "; ".join([error.get("message", "未知错误") for error in errors])
+                if messages:
+                    error_msg = ", ".join(messages)
+                elif errors:
+                    error_msg = ", ".join([error.get("message", "未知错误") for error in errors])
+                else:
+                    error_msg = "未知错误"
                 raise Exception(f"Cloudflare API错误: {error_msg}")
             
             record_id = data.get("result", {}).get("id")
@@ -159,7 +177,8 @@ class CloudflareProvider(BaseProvider):
             "type": record["type"],
             "name": record["name"],
             "content": record["value"],
-            "ttl": record.get("ttl", 1)
+            "ttl": record.get("ttl", 1),
+            "proxied": False  # 默认不启用CDN代理
         }
         
         if record.get("priority"):
@@ -176,8 +195,14 @@ class CloudflareProvider(BaseProvider):
             
             data = response.json()
             if not data.get("success"):
+                messages = data.get("messages", [])
                 errors = data.get("errors", [])
-                error_msg = "; ".join([error.get("message", "未知错误") for error in errors])
+                if messages:
+                    error_msg = ", ".join(messages)
+                elif errors:
+                    error_msg = ", ".join([error.get("message", "未知错误") for error in errors])
+                else:
+                    error_msg = "未知错误"
                 raise Exception(f"Cloudflare API错误: {error_msg}")
             
             return True
@@ -207,8 +232,14 @@ class CloudflareProvider(BaseProvider):
             
             data = response.json()
             if not data.get("success"):
+                messages = data.get("messages", [])
                 errors = data.get("errors", [])
-                error_msg = "; ".join([error.get("message", "未知错误") for error in errors])
+                if messages:
+                    error_msg = ", ".join(messages)
+                elif errors:
+                    error_msg = ", ".join([error.get("message", "未知错误") for error in errors])
+                else:
+                    error_msg = "未知错误"
                 raise Exception(f"Cloudflare API错误: {error_msg}")
             
             return True
