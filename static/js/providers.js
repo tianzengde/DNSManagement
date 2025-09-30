@@ -134,10 +134,22 @@ class ProvidersManager {
             } else {
                 title.textContent = '添加服务商';
                 form.reset();
+                // 初始化字段状态
+                this.initializeFormFields();
             }
 
             modal.style.display = 'block';
         }
+    }
+    
+    initializeFormFields() {
+        // 确保默认状态下传统字段有required属性
+        document.getElementById('providerAccessKey').setAttribute('required', 'required');
+        document.getElementById('providerSecretKey').setAttribute('required', 'required');
+        document.getElementById('providerToken').removeAttribute('required');
+        // 确保默认显示传统字段
+        document.getElementById('traditionalKeys').style.display = 'block';
+        document.getElementById('cloudflareToken').style.display = 'none';
     }
 
     async loadProviderData(providerId) {
@@ -147,9 +159,20 @@ class ProvidersManager {
 
             document.getElementById('providerName').value = provider.name;
             document.getElementById('providerType').value = provider.type;
-            document.getElementById('providerAccessKey').value = provider.access_key;
-            document.getElementById('providerSecretKey').value = provider.secret_key;
             document.getElementById('providerEnabled').checked = provider.enabled;
+            
+            // 根据提供商类型填充不同的字段
+            if (provider.type === 4) { // Cloudflare
+                document.getElementById('providerToken').value = provider.access_key;
+                document.getElementById('providerEmail').value = provider.secret_key || '';
+            } else { // 华为云、阿里云、腾讯云
+                document.getElementById('providerAccessKey').value = provider.access_key;
+                document.getElementById('providerSecretKey').value = provider.secret_key;
+                document.getElementById('providerRegion').value = provider.region || '';
+            }
+            
+            // 触发帮助信息显示和字段切换
+            this.showProviderHelp(provider.type.toString());
         } catch (error) {
             this.showAlert('providers-alert', '加载服务商数据失败: ' + error.message, 'error');
         }
@@ -172,13 +195,32 @@ class ProvidersManager {
             this.showLoadingSpinner(submitButton, '保存中...');
         }
 
-        const formData = {
-            name: document.getElementById('providerName').value,
-            type: parseInt(document.getElementById('providerType').value),
-            access_key: document.getElementById('providerAccessKey').value,
-            secret_key: document.getElementById('providerSecretKey').value,
-            enabled: document.getElementById('providerEnabled').checked
-        };
+        const providerType = parseInt(document.getElementById('providerType').value);
+        let formData;
+        
+        if (providerType === 4) { // Cloudflare
+            const token = document.getElementById('providerToken').value;
+            if (!token) {
+                this.showAlert('providers-alert', '请输入Cloudflare API Token', 'error');
+                return;
+            }
+            formData = {
+                name: document.getElementById('providerName').value,
+                type: providerType,
+                access_key: token,
+                secret_key: document.getElementById('providerEmail').value || '',
+                enabled: document.getElementById('providerEnabled').checked
+            };
+        } else { // 华为云、阿里云、腾讯云
+            formData = {
+                name: document.getElementById('providerName').value,
+                type: providerType,
+                access_key: document.getElementById('providerAccessKey').value,
+                secret_key: document.getElementById('providerSecretKey').value,
+                region: document.getElementById('providerRegion').value || '',
+                enabled: document.getElementById('providerEnabled').checked
+            };
+        }
 
         try {
             const url = this.currentProviderId ? `/api/providers/${this.currentProviderId}` : '/api/providers/';
@@ -345,10 +387,33 @@ class ProvidersManager {
         const helpDiv = document.getElementById('providerHelp');
         const helpTitle = document.getElementById('helpTitle');
         const helpContent = document.getElementById('helpContent');
+        const traditionalKeys = document.getElementById('traditionalKeys');
+        const cloudflareToken = document.getElementById('cloudflareToken');
         
         if (!providerType) {
             helpDiv.style.display = 'none';
+            traditionalKeys.style.display = 'block';
+            cloudflareToken.style.display = 'none';
             return;
+        }
+        
+        // 切换输入字段显示
+        if (providerType === '4') { // Cloudflare
+            traditionalKeys.style.display = 'none';
+            cloudflareToken.style.display = 'block';
+            // 移除传统字段的required属性，避免表单验证错误
+            document.getElementById('providerAccessKey').removeAttribute('required');
+            document.getElementById('providerSecretKey').removeAttribute('required');
+            // 为Cloudflare Token添加required属性
+            document.getElementById('providerToken').setAttribute('required', 'required');
+        } else { // 华为云、阿里云、腾讯云
+            traditionalKeys.style.display = 'block';
+            cloudflareToken.style.display = 'none';
+            // 恢复传统字段的required属性
+            document.getElementById('providerAccessKey').setAttribute('required', 'required');
+            document.getElementById('providerSecretKey').setAttribute('required', 'required');
+            // 移除Cloudflare Token的required属性
+            document.getElementById('providerToken').removeAttribute('required');
         }
         
         const helpData = this.getProviderHelpData(providerType);

@@ -113,17 +113,32 @@ class ModalUtils {
                         </div>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="providerAccessKey">访问密钥</label>
-                    <input type="text" id="providerAccessKey" required>
+                <!-- 传统密钥输入（华为云、阿里云、腾讯云） -->
+                <div id="traditionalKeys" class="key-input-group">
+                    <div class="form-group">
+                        <label for="providerAccessKey">访问密钥</label>
+                        <input type="text" id="providerAccessKey" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="providerSecretKey">秘密密钥</label>
+                        <input type="password" id="providerSecretKey" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="providerRegion">区域（可选）</label>
+                        <input type="text" id="providerRegion" placeholder="如：cn-north-4">
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label for="providerSecretKey">秘密密钥</label>
-                    <input type="password" id="providerSecretKey" required>
-                </div>
-                <div class="form-group">
-                    <label for="providerRegion">区域（可选）</label>
-                    <input type="text" id="providerRegion" placeholder="如：cn-north-4">
+                
+                <!-- Cloudflare Token输入 -->
+                <div id="cloudflareToken" class="key-input-group" style="display: none;">
+                    <div class="form-group">
+                        <label for="providerToken">API Token <span style="color: red;">*</span></label>
+                        <input type="password" id="providerToken" placeholder="输入Cloudflare API Token">
+                    </div>
+                    <div class="form-group">
+                        <label for="providerEmail">邮箱（可选）</label>
+                        <input type="email" id="providerEmail" placeholder="Cloudflare账号邮箱">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="switch-container">
