@@ -366,7 +366,7 @@ class ProvidersManager {
                         <h5>📋 获取步骤：</h5>
                         <ol>
                             <li>登录 <a href="https://console.huaweicloud.com/" target="_blank">华为云控制台</a></li>
-                            <li>访问 <a href="https://console.huaweicloud.com/iam/#/mine/apiCredential" target="_blank">API凭证管理</a></li>
+                            <li>访问 <a href="https://console.huaweicloud.com/iam/?locale=zh-cn#/mine/accessKey" target="_blank">API凭证管理</a></li>
                             <li>创建访问密钥，获取 Access Key ID 和 Secret Access Key</li>
                             <li>确保账号有 DNS 解析权限</li>
                         </ol>
@@ -388,7 +388,7 @@ class ProvidersManager {
                         <h5>📋 获取步骤：</h5>
                         <ol>
                             <li>登录 <a href="https://ecs.console.aliyun.com/" target="_blank">阿里云控制台</a></li>
-                            <li>访问 <a href="https://usercenter.console.aliyun.com/#/manage/ak" target="_blank">AccessKey管理</a></li>
+                            <li>访问 <a href="https://ram.console.aliyun.com/profile/access-keys" target="_blank">AccessKey管理</a></li>
                             <li>创建AccessKey，获取 Access Key ID 和 Access Key Secret</li>
                             <li>确保账号有 DNS 解析权限</li>
                         </ol>
@@ -410,7 +410,7 @@ class ProvidersManager {
                         <h5>📋 获取步骤：</h5>
                         <ol>
                             <li>登录 <a href="https://console.cloud.tencent.com/" target="_blank">腾讯云控制台</a></li>
-                            <li>访问 <a href="https://console.cloud.tencent.com/cam/capi" target="_blank">API密钥管理</a></li>
+                            <li>访问 <a href="https://console.dnspod.cn/account/token/apikey" target="_blank">API密钥管理</a></li>
                             <li>创建API密钥，获取 SecretId 和 SecretKey</li>
                             <li>确保账号有 DNS 解析权限</li>
                         </ol>
