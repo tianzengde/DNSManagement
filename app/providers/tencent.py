@@ -27,8 +27,8 @@ class TencentProvider(BaseProvider):
         timestamp = int(datetime.now().timestamp())
         timestamp_str = str(timestamp)
         
-        # 计算payload哈希
-        payload = json.dumps(params, separators=(',', ':'))
+        # 计算payload哈希 - 使用ensure_ascii=False保持中文字符
+        payload = json.dumps(params, separators=(',', ':'), ensure_ascii=False)
         payload_hash = hashlib.sha256(payload.encode('utf-8')).hexdigest()
         
         # step 1: build canonical request string
@@ -168,7 +168,6 @@ class TencentProvider(BaseProvider):
         if record.get("priority"):
             params["MX"] = record["priority"]
         
-        print(f"[DEBUG] 创建记录参数: {params}")
         headers = self._sign_request("CreateRecord", params)
         
         async with httpx.AsyncClient() as client:
@@ -181,19 +180,14 @@ class TencentProvider(BaseProvider):
             response.raise_for_status()
             
             data = response.json()
-            print(f"[DEBUG] 创建记录响应: {data}")
-            
             if data.get("Response", {}).get("Error"):
                 error_info = data["Response"]["Error"]
-                print(f"[DEBUG] 创建记录错误: {error_info}")
                 raise Exception(f"腾讯云API错误: {error_info.get('Message', '未知错误')} (Code: {error_info.get('Code', 'N/A')})")
             
             record_id = data.get("Response", {}).get("RecordId")
             if not record_id:
-                print(f"[DEBUG] 未返回记录ID，完整响应: {data}")
                 raise Exception("服务商API未返回记录ID")
             
-            print(f"[DEBUG] 创建记录成功，记录ID: {record_id}")
             return str(record_id)
     
     async def update_record(self, domain: str, record_id: str, record: Dict[str, Any]) -> bool:
@@ -209,7 +203,7 @@ class TencentProvider(BaseProvider):
         
         params = {
             "Domain": domain,
-            "RecordId": record_id,
+            "RecordId": int(record_id),  # 必须是整数
             "SubDomain": subdomain,  # 子域名部分，不是完整域名
             "RecordType": record["type"],
             "RecordLine": "默认",
@@ -242,7 +236,7 @@ class TencentProvider(BaseProvider):
         """删除解析记录"""
         params = {
             "Domain": domain,
-            "RecordId": record_id
+            "RecordId": int(record_id)  # 必须是整数
         }
         
         headers = self._sign_request("DeleteRecord", params)
