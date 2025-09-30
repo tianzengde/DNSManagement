@@ -98,7 +98,10 @@ class ModalUtils {
                         <option value="">请选择</option>
                         <option value="1">华为云</option>
                         <option value="2">阿里云</option>
+                        <option value="3">腾讯云</option>
+                        <option value="4">Cloudflare</option>
                     </select>
+                    <!-- v2.0 - 添加腾讯云和Cloudflare支持 -->
                 </div>
                 <div class="form-group">
                     <label for="providerAccessKey">访问密钥</label>
@@ -122,7 +125,7 @@ class ModalUtils {
                     </label>
                 </div>
                 <div style="text-align: right; margin-top: 2rem;">
-                    <button type="button" class="btn btn-secondary" onclick="app.closeProviderModal()">取消</button>
+                    <button type="button" class="btn btn-secondary" onclick="providersApp.closeProviderModal()">取消</button>
                     <button type="submit" class="btn btn-primary">保存</button>
                 </div>
             </form>

@@ -73,7 +73,9 @@ class ProvidersManager {
             // 获取类型显示名称
             const typeMapping = {
                 1: '华为云',
-                2: '阿里云'
+                2: '阿里云',
+                3: '腾讯云',
+                4: 'Cloudflare'
             };
             const typeDisplayName = typeMapping[provider.type] || '未知';
             

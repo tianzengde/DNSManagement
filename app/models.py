@@ -10,6 +10,8 @@ class ProviderType(IntEnum):
     """DNS服务商类型"""
     HUAWEI = 1
     ALIYUN = 2
+    TENCENT = 3
+    CLOUDFLARE = 4
 
 
 class RecordType(IntEnum):

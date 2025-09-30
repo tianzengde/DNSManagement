@@ -12,6 +12,12 @@ def get_provider_instance(provider: Provider):
     elif provider.type == 2:  # 阿里云
         from app.providers.aliyun import AliyunProvider
         return AliyunProvider(provider.access_key, provider.secret_key, provider.region)
+    elif provider.type == 3:  # 腾讯云
+        from app.providers.tencent import TencentProvider
+        return TencentProvider(provider.access_key, provider.secret_key, provider.region)
+    elif provider.type == 4:  # Cloudflare
+        from app.providers.cloudflare import CloudflareProvider
+        return CloudflareProvider(provider.access_key, provider.secret_key, provider.region)
     else:
         return None
 

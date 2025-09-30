@@ -5,6 +5,8 @@ from datetime import datetime
 from app.models import Provider, Domain, DNSRecord, RecordType
 from app.providers.huawei import HuaweiProvider
 from app.providers.aliyun import AliyunProvider
+from app.providers.tencent import TencentProvider
+from app.providers.cloudflare import CloudflareProvider
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +18,8 @@ class DomainSyncService:
         self.providers_map = {
             1: HuaweiProvider,  # 华为云
             2: AliyunProvider,  # 阿里云
+            3: TencentProvider,  # 腾讯云
+            4: CloudflareProvider,  # Cloudflare
         }
     
     async def sync_all_providers(self):
