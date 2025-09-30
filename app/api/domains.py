@@ -116,6 +116,20 @@ async def create_domain_record(domain_id: int, record_data: DNSRecordCreate):
             secret_key=domain.provider.secret_key,
             region=domain.provider.region or "cn-hangzhou"
         )
+    elif domain.provider.type == 3:  # 腾讯云
+        from app.providers.tencent import TencentProvider
+        provider = TencentProvider(
+            access_key=domain.provider.access_key,
+            secret_key=domain.provider.secret_key,
+            region=domain.provider.region or "ap-beijing"
+        )
+    elif domain.provider.type == 4:  # Cloudflare
+        from app.providers.cloudflare import CloudflareProvider
+        provider = CloudflareProvider(
+            access_key=domain.provider.access_key,
+            secret_key=domain.provider.secret_key,
+            region=domain.provider.region or ""
+        )
     
     if not provider:
         raise HTTPException(status_code=400, detail="不支持的服务商类型")
@@ -183,6 +197,20 @@ async def update_domain_record(record_id: int, record_data: DNSRecordUpdate):
             access_key=domain.provider.access_key,
             secret_key=domain.provider.secret_key,
             region=domain.provider.region or "cn-hangzhou"
+        )
+    elif domain.provider.type == 3:  # 腾讯云
+        from app.providers.tencent import TencentProvider
+        provider_instance = TencentProvider(
+            access_key=domain.provider.access_key,
+            secret_key=domain.provider.secret_key,
+            region=domain.provider.region or "ap-beijing"
+        )
+    elif domain.provider.type == 4:  # Cloudflare
+        from app.providers.cloudflare import CloudflareProvider
+        provider_instance = CloudflareProvider(
+            access_key=domain.provider.access_key,
+            secret_key=domain.provider.secret_key,
+            region=domain.provider.region or ""
         )
     
     if not provider_instance:
@@ -293,6 +321,20 @@ async def delete_domain_record(record_id: int):
             access_key=domain.provider.access_key,
             secret_key=domain.provider.secret_key,
             region=domain.provider.region or "cn-hangzhou"
+        )
+    elif domain.provider.type == 3:  # 腾讯云
+        from app.providers.tencent import TencentProvider
+        provider_instance = TencentProvider(
+            access_key=domain.provider.access_key,
+            secret_key=domain.provider.secret_key,
+            region=domain.provider.region or "ap-beijing"
+        )
+    elif domain.provider.type == 4:  # Cloudflare
+        from app.providers.cloudflare import CloudflareProvider
+        provider_instance = CloudflareProvider(
+            access_key=domain.provider.access_key,
+            secret_key=domain.provider.secret_key,
+            region=domain.provider.region or ""
         )
     
     if not provider_instance:

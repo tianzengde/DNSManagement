@@ -4,7 +4,7 @@ from typing import List
 from tortoise.transactions import atomic
 from app.models import Provider
 from app.schemas import ProviderCreate, ProviderUpdate, ProviderResponse
-from app.providers import HuaweiProvider, AliyunProvider
+from app.providers import HuaweiProvider, AliyunProvider, TencentProvider, CloudflareProvider
 from app.services.scheduler_service import scheduler_service
 
 router = APIRouter(prefix="/api/providers", tags=["providers"])
@@ -45,6 +45,18 @@ async def create_provider(provider_data: ProviderCreate):
                 )
             elif provider_data.type.value == 2:  # 阿里云
                 provider_instance = AliyunProvider(
+                    provider_data.access_key,
+                    provider_data.secret_key,
+                    provider_data.region or ""
+                )
+            elif provider_data.type.value == 3:  # 腾讯云
+                provider_instance = TencentProvider(
+                    provider_data.access_key,
+                    provider_data.secret_key,
+                    provider_data.region or ""
+                )
+            elif provider_data.type.value == 4:  # Cloudflare
+                provider_instance = CloudflareProvider(
                     provider_data.access_key,
                     provider_data.secret_key,
                     provider_data.region or ""
@@ -109,6 +121,10 @@ async def update_provider(provider_id: int, provider_data: ProviderUpdate):
             provider_instance = HuaweiProvider(access_key, secret_key, region or "")
         elif provider.type.value == 2:  # 阿里云
             provider_instance = AliyunProvider(access_key, secret_key, region or "")
+        elif provider.type.value == 3:  # 腾讯云
+            provider_instance = TencentProvider(access_key, secret_key, region or "")
+        elif provider.type.value == 4:  # Cloudflare
+            provider_instance = CloudflareProvider(access_key, secret_key, region or "")
         else:
             raise HTTPException(status_code=400, detail="不支持的服务商类型")
         
@@ -154,6 +170,18 @@ async def test_provider_connection(provider_id: int):
             )
         elif provider.type.value == 2:  # 阿里云
             provider_instance = AliyunProvider(
+                provider.access_key,
+                provider.secret_key,
+                provider.region or ""
+            )
+        elif provider.type.value == 3:  # 腾讯云
+            provider_instance = TencentProvider(
+                provider.access_key,
+                provider.secret_key,
+                provider.region or ""
+            )
+        elif provider.type.value == 4:  # Cloudflare
+            provider_instance = CloudflareProvider(
                 provider.access_key,
                 provider.secret_key,
                 provider.region or ""
@@ -206,6 +234,18 @@ async def get_provider_domains(provider_id: int):
             )
         elif provider.type.value == 2:  # 阿里云
             provider_instance = AliyunProvider(
+                provider.access_key,
+                provider.secret_key,
+                provider.region or ""
+            )
+        elif provider.type.value == 3:  # 腾讯云
+            provider_instance = TencentProvider(
+                provider.access_key,
+                provider.secret_key,
+                provider.region or ""
+            )
+        elif provider.type.value == 4:  # Cloudflare
+            provider_instance = CloudflareProvider(
                 provider.access_key,
                 provider.secret_key,
                 provider.region or ""
@@ -274,6 +314,18 @@ async def get_domain_records(provider_id: int, domain_name: str):
                 provider.secret_key,
                 provider.region or ""
             )
+        elif provider.type.value == 3:  # 腾讯云
+            provider_instance = TencentProvider(
+                provider.access_key,
+                provider.secret_key,
+                provider.region or ""
+            )
+        elif provider.type.value == 4:  # Cloudflare
+            provider_instance = CloudflareProvider(
+                provider.access_key,
+                provider.secret_key,
+                provider.region or ""
+            )
         else:
             raise HTTPException(status_code=400, detail="不支持的服务商类型")
         
@@ -299,6 +351,18 @@ async def delete_dns_record(provider_id: int, record_name: str):
             )
         elif provider.type.value == 2:  # 阿里云
             provider_instance = AliyunProvider(
+                provider.access_key,
+                provider.secret_key,
+                provider.region or ""
+            )
+        elif provider.type.value == 3:  # 腾讯云
+            provider_instance = TencentProvider(
+                provider.access_key,
+                provider.secret_key,
+                provider.region or ""
+            )
+        elif provider.type.value == 4:  # Cloudflare
+            provider_instance = CloudflareProvider(
                 provider.access_key,
                 provider.secret_key,
                 provider.region or ""

@@ -90,20 +90,27 @@ class DomainSyncService:
             if not domain_name:
                 return
             
-            # 查找或创建域名记录
-            domain, created = await Domain.get_or_create(
-                name=domain_name,
-                provider=provider,
-                defaults={
-                    'enabled': True,
-                    'auto_update': True
-                }
-            )
+            # 首先检查域名是否已存在
+            existing_domain = await Domain.filter(name=domain_name).prefetch_related('provider').first()
             
-            if created:
-                logger.info(f"创建新域名: {domain_name}")
+            if existing_domain:
+                # 如果域名已存在，检查是否属于当前服务商
+                if existing_domain.provider_id == provider.id:
+                    logger.info(f"更新现有域名: {domain_name}")
+                    domain = existing_domain
+                else:
+                    # 域名属于其他服务商，跳过同步
+                    logger.warning(f"域名 {domain_name} 已属于服务商 {existing_domain.provider.name}，跳过同步")
+                    return
             else:
-                logger.info(f"更新现有域名: {domain_name}")
+                # 创建新域名记录
+                domain = await Domain.create(
+                    name=domain_name,
+                    provider=provider,
+                    enabled=True,
+                    auto_update=True
+                )
+                logger.info(f"创建新域名: {domain_name}")
             
             # 获取该域名的DNS记录
             try:
@@ -192,6 +199,9 @@ class DomainSyncService:
     
     def _get_record_type(self, type_str: str) -> RecordType:
         """将字符串类型转换为RecordType枚举"""
+        if not type_str:
+            return RecordType.A
+        
         type_mapping = {
             'A': RecordType.A,
             'AAAA': RecordType.AAAA,
